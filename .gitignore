@@ -1,0 +1,2 @@
+#Ne pas publier les clés d'api
+multimode/modules/apikey/*.py

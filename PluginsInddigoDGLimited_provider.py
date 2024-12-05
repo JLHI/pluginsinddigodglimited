@@ -32,7 +32,7 @@ __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessingProvider
 from .waypointssequences.Arbre_de_rabattement_algorithm import ArbreDeRabattementAlgorithm
-
+from multimode.Multimode_GIS_processing_algorithm import Multimode_GIS_processingAlgorithm
 
 class PluginsInddigoDGLimitedProvider(QgsProcessingProvider):
 
@@ -56,8 +56,7 @@ class PluginsInddigoDGLimitedProvider(QgsProcessingProvider):
         #self.addAlgorithm(PluginsInddigoDGAlgorithm())
 
         self.addAlgorithm(ArbreDeRabattementAlgorithm())
-
-
+        self.addAlgorithm(Multimode_GIS_processingAlgorithm())
 
         # add additional algorithms here
         # self.addAlgorithm(MyOtherAlgorithm())
