@@ -29,6 +29,7 @@ __copyright__ = '(C) 2024 by C.Garcia - JL.Humbert from Inddigo'
 # This will get replaced with a git SHA1 when you do a git archive
 
 __revision__ = '$Format:%H$'
+from qgis.PyQt.QtWidgets import QMessageBox
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (QgsProcessing,
@@ -223,7 +224,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         )
 
     if Herekey is None : 
-        raise QgsProcessingException("Erreur : La clé Here n'est pas configurée. Veuillez la définir dans les paramètres globaux, puis recharger le plugin.")
+        QMessageBox.warning(None, "Clé manquante", "Attention : La clé Here n'est pas configurée. Vous devez ajouter une variable globale 'hereapikey' et saisir votre api Here, puis recharger le plugin")
 
 
     def processAlgorithm(self, parameters, context, feedback):
