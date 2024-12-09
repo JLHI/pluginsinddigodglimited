@@ -47,22 +47,25 @@ def saveInDb(mode) :
         # Étape 2 : Effectuer une modification SQL
         query = QSqlQuery(db)
         titre = getProjectName()
-        date = datetime.datetime.now()
+        now = datetime.datetime.now()
+        date = now.strftime("%d/%m/%Y%H:%M:%S")
+
         # Étape 3 : Ajouter une nouvelle ligne dans la table
         # SQL with placeholders
         sql_insert = """
-        INSERT INTO schema.table_name (column1, column2, geometry_column)
-        VALUES (:titre, :mode, :date);
+        INSERT INTO multimode.compteur_multimode (projet, type, date) 
+        VALUES (?, ?, ?);
         """
 
         # Prepare the query
         query.prepare(sql_insert)
 
-        # Bind values to placeholders
-        query.bindValue(":titre", titre)  # String
-        query.bindValue(":mode", mode)    # Integer
-        query.bindValue(":date", date)    # String (date)
-        if query.exec(sql_insert):
+        # Lier les valeurs aux paramètres
+        query.bindValue(0, titre)  # Lier le titre à la première position (%s)
+        query.bindValue(1, mode)   # Lier le mode à la deuxième position (%s)
+        query.bindValue(2, date)   # Lier la date à la troisième position (%s)
+
+        if query.exec():
             print("Insertion effectuée avec succès.")
         else:
             print(f"Erreur lors de l'insertion : {query.lastError().text()}")
@@ -76,7 +79,7 @@ def getProjectName():
     # Récupère le chemin et le nom du projet
     title = QgsProject.instance().baseName()
     print(title)
-    if title is "":
+    if title is (''):
         # Pour enregistrer le projet sans titre ds une variable
         title = 'Un projet sans nom'
         return title
