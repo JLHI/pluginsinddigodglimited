@@ -1,7 +1,8 @@
 import requests
-def tpcartrafichere(s_olng, s_olat, s_dlng, s_dlat,formatted_datetime,type_heure, keyvelohere):
+def tpcartrafichere(s_olng, s_olat, s_dlng, s_dlat,formatted_datetime,type_heure, keyhere):
     try:
-        url = f'https://router.hereapi.com/v8/routes?transportMode=car&origin={s_olat},{s_olng}&destination={s_dlat},{s_dlng}{type_heure}{formatted_datetime}&return=summary&apiKey={keyvelohere}'
+        url = f'https://router.hereapi.com/v8/routes?transportMode=car&origin={s_olat},{s_olng}&destination={s_dlat},{s_dlng}{type_heure}{formatted_datetime}&return=summary&apiKey={keyhere}'
+        print("voiture avec trafic : ", url)
         # Envoyer une requête GET
         response = requests.get(url)
         # Convertir la réponse en JSON
