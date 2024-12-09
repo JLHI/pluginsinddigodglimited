@@ -321,7 +321,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
 
             if feature2:  # Si une correspondance existe
                 # Combiner les attributs des deux entités
-                combined_attributes = feature1.attributes() + feature2.attributes()
+                combined_attributes = feature1.attributes()
 
             # Récupère la géométrie
             geometry1 = feature1.geometry()
