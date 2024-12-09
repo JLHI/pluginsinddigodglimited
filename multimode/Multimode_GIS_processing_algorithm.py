@@ -57,7 +57,7 @@ from .modules.get_car import tpcarhere
 from .modules.get_car_trafic import tpcartrafichere
 from .modules.get_tc import tptchere
 
-from .utils.utils import sanitize_value, safe_string
+from .utils.utils import sanitize_value, safe_string, saveInDb
 
 
 Herekey = None
@@ -225,6 +225,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
 
     if Herekey is None : 
         QMessageBox.warning(None, "Clé manquante", "Attention : La clé Here n'est pas configurée. Vous devez ajouter une variable globale 'hereapikey' et saisir votre api Here, puis recharger le plugin")
+    
 
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -353,24 +354,29 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             # Calculs selon les options sélectionnées
             if "Piéton" in selected_values:
                 marche = tppietonhere(s_olng, s_olat, s_dlng, s_dlat, Herekey)
+                saveInDb("Piéton") 
                 feedback.pushInfo(f"Temps à pied : {marche} minutes")
 
             if "Vélo" in selected_values:
                 tempsVeloHere, tempsVaeHere = tpgvelohere(s_olng, s_olat, s_dlng, s_dlat, Herekey)
+                saveInDb("Vélo") 
                 feedback.pushInfo(f"Temps en vélo : {tempsVeloHere} minutes ; en VAE : {tempsVaeHere} minutes")
 
             if "Voiture" in selected_values:
                 CarTime = tpcarhere(s_olng, s_olat, s_dlng, s_dlat, Herekey)
+                saveInDb("Voiture") 
                 feedback.pushInfo(f"Temps en voiture : {CarTime} minutes")
 
             if "Voiture avec trafic" in selected_values:
                 CarTimeTrafic = tpcartrafichere(s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, Herekey)
+                saveInDb("Voiture avec trafic") 
                 feedback.pushInfo(f"Temps en voiture avec trafic : {CarTimeTrafic} minutes")
 
             if "Transport en commun" in selected_values:
                 total_duration, start_time, end_time, num_transits, time_difference, correspondences = tptchere(
                     s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, tps_marche_max, Herekey
                 )
+                saveInDb("Transport en commun") 
                 feedback.pushInfo(f"Temps TC : {total_duration} minutes, départ : {start_time}, arrivée : {end_time}")
 
             # Ajouter les nouvelles valeurs aux attributs
