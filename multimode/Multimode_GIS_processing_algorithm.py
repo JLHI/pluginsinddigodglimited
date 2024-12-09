@@ -289,6 +289,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         options = ["Piéton", "Vélo", "Voiture", "Voiture avec trafic", "Transport en commun"]
         selected_values = [options[i] for i in selected_checkboxes]
         print("Modes sélectionnés :", selected_values)
+
         
         # Compute the number of steps to display within the progress bar and
         # get features from source
@@ -348,7 +349,6 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             num_transits = None
             time_difference = None
             correspondences = None
-
             
             # Calculs selon les options sélectionnées
             if "Piéton" in selected_values:
