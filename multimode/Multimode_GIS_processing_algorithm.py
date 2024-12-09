@@ -252,8 +252,8 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         for field in source1.fields():  # Appelez la méthode fields() pour obtenir la liste des champs
             fields.append(field)
         
-        for field in source2.fields():  # Ajout des champs de la seconde source
-            fields.append(field)
+        # for field in source2.fields():  # Ajout des champs de la seconde source
+        #     fields.append(field)
 
 
 
