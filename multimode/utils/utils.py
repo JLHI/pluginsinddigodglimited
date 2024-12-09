@@ -49,8 +49,19 @@ def saveInDb(mode) :
         titre = getProjectName()
         date = datetime.datetime.now()
         # Étape 3 : Ajouter une nouvelle ligne dans la table
-        sql_insert = f"INSERT INTO schema.table_name (column1, column2, geometry_column) VALUES ({titre}, {mode}, {date}); "
+        # SQL with placeholders
+        sql_insert = """
+        INSERT INTO schema.table_name (column1, column2, geometry_column)
+        VALUES (:titre, :mode, :date);
+        """
 
+        # Prepare the query
+        query.prepare(sql_insert)
+
+        # Bind values to placeholders
+        query.bindValue(":titre", titre)  # String
+        query.bindValue(":mode", mode)    # Integer
+        query.bindValue(":date", date)    # String (date)
         if query.exec(sql_insert):
             print("Insertion effectuée avec succès.")
         else:
