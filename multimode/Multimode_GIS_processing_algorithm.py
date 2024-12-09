@@ -59,19 +59,15 @@ from .modules.get_tc import tptchere
 from .utils.utils import sanitize_value, safe_string
 
 
-Herekey = 'Clé non présente'
+Herekey = None
 # Replace 'variable_name' with the name of your global variable
 variable_name = 'hereapikey'
 
 # Get the global variable value
-Herekey = QgsExpressionContextUtils.globalScope().variable(variable_name)
-
-# Print the value
-if Herekey is not None:
-    print(f"The value of the global variable '{variable_name}' is: {Herekey}")
-else:
-    print(f"The global variable '{variable_name}' does not exist.")
-
+try : 
+    Herekey = QgsExpressionContextUtils.globalScope().variable(variable_name)
+except Exception as e: 
+    print(e)
 
 class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
     """
@@ -226,7 +222,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-    if Herekey == 'Clé non présente' : 
+    if Herekey is None : 
         raise QgsProcessingException("Erreur : La clé Here n'est pas configurée. Veuillez la définir dans les paramètres globaux, puis recharger le plugin.")
 
 
