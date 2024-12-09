@@ -64,7 +64,8 @@ def saveInDb(mode) :
 def getProjectName():
     # Récupère le chemin et le nom du projet
     title = QgsProject.instance().baseName()
-    if title is None:
+    print(title)
+    if title is "":
         # Pour enregistrer le projet sans titre ds une variable
         title = 'Un projet sans nom'
         return title
