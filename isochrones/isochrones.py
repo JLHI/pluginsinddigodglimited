@@ -88,17 +88,16 @@ class isochrone(QgsProcessingAlgorithm):
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
 
-    # OUTPUT = 'OUTPUT'
-    # INPUT1 = 'INPUT1'
-    # INPUT2 = 'INPUT2'
-    # ID_FIELD1_JOIN = 'ID_FIELD1_JOIN'
-    # ID_FIELD2_JOIN = 'ID_FIELD2_JOIN'
-    # FIELD_X_DEST = 'X_D'
-    # FIELD_Y_DEST = 'Y_D'
-    # DATE_FIELD = 'DATE_FIELD'
-    # CKB_DEPART_OU_ARRIVEE = 'CKB_DEPART_OU_ARRIVEE'
-    # CHECKBOXES_MODES = 'CHECKBOXES_MODES'
-    # DIST_MAX_MARCHE = 'DIST_MAX_MARCHE'
+    OUTPUT = 'OUTPUT'
+    INPUT1 = 'INPUT1'
+    ID_FIELD1_JOIN = 'ID_FIELD1_JOIN'
+    DATE_FIELD = 'DATE_FIELD'
+    CKB_DEPART_OU_ARRIVEE = 'CKB_DEPART_OU_ARRIVEE'
+    CHECKBOXES_MODES = 'CHECKBOXES_MODES'
+    DIST_MAX_MARCHE = 'DIST_MAX_MARCHE'
+    VALEUR_MAX = 'VALEUR_MAX'
+    VALEUR_INTERMEDIAIRES = 'VALEUR_INTERMEDIAIRES'
+
 
     def initAlgorithm(self, config):
         """
@@ -106,13 +105,95 @@ class isochrone(QgsProcessingAlgorithm):
         with some other properties.
         """
 
+        # We add the input vector features source. It can have any kind of
+        # geometry.
+        self.addParameter(
+            QgsProcessingParameterFeatureSource(
+                self.INPUT1,
+                self.tr('Input layer 1 '),
+                [QgsProcessing.TypeVectorAnyGeometry]
+            )
+        )
 
+        # We add a feature sink in which to store our processed features (this
+        # usually takes the form of a newly created vector layer when the
+        # algorithm is run in QGIS).
+        self.addParameter(
+            QgsProcessingParameterFeatureSink(
+                self.OUTPUT,
+                self.tr('Resultat_isochrone')
+            )
+        )
+
+        # Menu déroulant pour le champ id origine servant à la jointure
+        self.addParameter(
+            QgsProcessingParameterField(
+                self.ID_FIELD1_JOIN,
+                self.tr('Champ ID de la couche 1'),
+                '',
+                parentLayerParameterName=self.INPUT1,  # Lie le champ à la couche d'entrée
+                type=QgsProcessingParameterField.Numeric  # Limite la sélection aux champs numériques
+            )
+        )
+
+                # Ajout d'un paramètre de calendrier
+        self.addParameter(
+            QgsProcessingParameterDateTime(
+                self.DATE_FIELD,
+                self.tr('Selectionner une date'),
+                defaultValue=None,  # Vous pouvez définir une valeur par défaut
+                optional=False  # Permet de rendre le paramètre facultatif
+            )
+        )
+
+        # Paramètre pour une liste de valeurs texte séparées
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.CKB_DEPART_OU_ARRIVEE,
+                self.tr("Selectionnez si l'heure indiquée est celle de départ ou d'arrivée"),
+                options=["Heure de départ", "Heure d'arrivée"],
+                allowMultiple=False,  # Ne permet de cocher qu'une seule réponse
+                defaultValue= 1    
+            )
+        )
+
+        # Boutons à cocher simulés avec un Enum à sélection multiple
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.CHECKBOXES_MODES,
+                self.tr("Selectionnez les modes que vous voulez requêter"),
+                options=["Piéton", "Vélo", "Voiture", "Voiture avec trafic", "Transport en commun"],
+                allowMultiple=True,  # Permet de cocher plusieurs options
+                defaultValue=[0, 1]  # Option 1 et 2 cochées par défaut
+            )
+        )
+
+        # Paramètre temps de marche maximum
+        self.addParameter(
+            QgsProcessingParameterString(
+                self.DIST_MAX_MARCHE,
+                self.tr("Distance max à pied (en mètres)"),
+                defaultValue="300"
+            )
+        )
 
 
     def processAlgorithm(self, parameters, context, feedback):
         """
         Here is where the processing itself takes place.
         """
+        # Retrieve the feature source and sink. The 'dest_id' variable is used
+        # to uniquely identify the feature sink, and must be included in the
+        # dictionary returned by the processAlgorithm function.
+        source1 = self.parameterAsSource(parameters, self.INPUT1, context)
+        s_id1 = self.parameterAsString(parameters, self.ID_FIELD1_JOIN, context)
+        selected_date = self.parameterAsDateTime(parameters, self.DATE_FIELD, context)
+        selected_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_MODES, context)
+        tps_marche_max = self.parameterAsString(parameters,self.DIST_MAX_MARCHE, context)
+
+        if not source1:
+            raise QgsProcessingException("Impossible de charger les couches d'entrée.")
+
         result = print('hello')
         return result
 
