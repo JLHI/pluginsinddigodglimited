@@ -51,13 +51,13 @@ from qgis.core import (QgsProcessing,
                        QgsExpressionContextUtils
                        )
 from PyQt5.QtCore import QVariant
-from .modules.get_pieton import tppietonhere
-from .modules.get_bike import tpgvelohere
-from .modules.get_car import tpcarhere
-from .modules.get_car_trafic import tpcartrafichere
-from .modules.get_tc import tptchere
+# from .modules.get_pieton import tppietonhere
+# from .modules.get_bike import tpgvelohere
+# from .modules.get_car import tpcarhere
+# from .modules.get_car_trafic import tpcartrafichere
+# from .modules.get_tc import tptchere
 
-from .utils.utils import sanitize_value, safe_string, saveInDb
+# from .utils.utils import sanitize_value, safe_string, saveInDb
 
 
 # Herekey = None
@@ -70,7 +70,7 @@ from .utils.utils import sanitize_value, safe_string, saveInDb
 # except Exception as e: 
 #     print(e)
 
-class isochrone(QgsProcessingAlgorithm):
+class isochroneAlgorithm(QgsProcessingAlgorithm):
     """
     This is an example algorithm that takes a vector layer and
     creates a new identical one.
@@ -224,4 +224,4 @@ class isochrone(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return isochrone()
+        return isochroneAlgorithm()
