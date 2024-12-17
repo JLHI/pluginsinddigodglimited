@@ -31,7 +31,7 @@ __copyright__ = '(C) 2024 by JLHI'
 __revision__ = '$Format:%H$'
 
 from qgis.core import QgsProcessingProvider
-from .waypointssequences.Arbre_de_rabattement_algorithm import ArbreDeRabattementAlgorithm
+from .waypointssequences.waypointsequences import WaypointSequences
 from .multimode.Multimode_GIS_processing_algorithm import Multimode_GIS_processingAlgorithm
 from .isochrones.isochrones_algorithm import isochroneAlgorithm
 
@@ -56,7 +56,7 @@ class PluginsInddigoDGLimitedProvider(QgsProcessingProvider):
         """
         #self.addAlgorithm(PluginsInddigoDGAlgorithm())
 
-        self.addAlgorithm(ArbreDeRabattementAlgorithm())
+        #self.addAlgorithm(WaypointSequences())
         self.addAlgorithm(Multimode_GIS_processingAlgorithm())
         self.addAlgorithm(isochroneAlgorithm())
 
