@@ -1,4 +1,4 @@
-from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QCoreApplication,QVariant
 from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterFeatureSource,
@@ -6,8 +6,8 @@ from qgis.core import (
     QgsProcessingParameterString,
     QgsProcessingParameterFeatureSink,
     QgsFeature,
-    QgsProcessing,
-    QgsFeatureSink,QgsGeometry,
+    QgsProcessing,QgsWkbTypes,
+    QgsFeatureSink,QgsGeometry,QgsFields,QgsField,
     QgsMessageLog,QgsPointXY,QgsProcessingException,QgsExpressionContextUtils
 )
 import requests
@@ -26,125 +26,141 @@ except Exception as e:
 
 class WaypointSequences(QgsProcessingAlgorithm):
     INPUT = 'INPUT'
+    WAYPOINTS_OUTPUT = 'WAYPOINTS_OUTPUT'
     GROUP_FIELD = 'GROUP_FIELD'
     SEQUENCE_FIELD = 'SEQUENCE_FIELD'
-    WAYPOINTS_OUTPUT = 'WAYPOINTS_OUTPUT'
-    INTERCONNECTIONS_OUTPUT = 'INTERCONNECTIONS_OUTPUT'
+    ROUTE_OUTPUT = 'ROUTE_OUTPUT'
 
     def initAlgorithm(self, config=None):
-        self.addParameter(QgsProcessingParameterFeatureSource(
-            self.INPUT,
-            self.tr('Input point layer'),
-            [QgsProcessing.TypeVectorPoint]
-        ))
-        
-        self.addParameter(QgsProcessingParameterField(
-            self.GROUP_FIELD,
-            self.tr('Field for tour grouping'),
-            parentLayerParameterName=self.INPUT
-        ))
-        
-        self.addParameter(QgsProcessingParameterField(
-            self.SEQUENCE_FIELD,
-            self.tr('Field for point sequence'),
-            parentLayerParameterName=self.INPUT
-        ))
-        
-        self.addParameter(QgsProcessingParameterFeatureSink(
-            self.WAYPOINTS_OUTPUT,
-            self.tr('Output waypoints'),
-            QgsProcessing.TypeVectorPoint
-        ))
-        
-        self.addParameter(QgsProcessingParameterFeatureSink(
-            self.INTERCONNECTIONS_OUTPUT,
-            self.tr('Output interconnections'),
-            QgsProcessing.TypeVectorLine
-        ))
+        self.addParameter(
+            QgsProcessingParameterFeatureSource(
+                self.INPUT, self.tr('Input Layer'), [QgsProcessing.TypeVectorPoint]
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterString(
+                self.GROUP_FIELD, self.tr('Group Field'), defaultValue=''
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterString(
+                self.SEQUENCE_FIELD, self.tr('Sequence Field'), defaultValue=''
+            )
+        )
+        self.addParameter(
+            QgsProcessingParameterFeatureSink(
+                self.WAYPOINTS_OUTPUT, self.tr('Waypoints Output')
+            )
+        )
+
+
 
     def processAlgorithm(self, parameters, context, feedback):
         layer = self.parameterAsSource(parameters, self.INPUT, context)
         group_field = self.parameterAsString(parameters, self.GROUP_FIELD, context)
         sequence_field = self.parameterAsString(parameters, self.SEQUENCE_FIELD, context)
 
+        # HERE API Key and URLs
+        here_api_key = "YOUR_HERE_API_KEY"  # Replace with your actual HERE API key
+        sequence_url = "https://wps.hereapi.com/v8/findsequence2"
+        routing_url = "https://router.hereapi.com/v8/routes"
+
+        # Define output fields for waypoints
+        fields = QgsFields()
+        fields.append(QgsField("fid", QVariant.Int))
+        fields.append(QgsField("waypointID", QVariant.String))
+        fields.append(QgsField("sequence", QVariant.Int))
+        fields.append(QgsField("latitude", QVariant.Double))
+        fields.append(QgsField("longitude", QVariant.Double))
+
+        # Create output sink
         (waypoints_sink, waypoints_sink_id) = self.parameterAsSink(
             parameters, self.WAYPOINTS_OUTPUT, context,
-            layer.fields(), QgsProcessing.TypeVectorPoint, layer.sourceCrs()
-        )
-        
-        (interconnections_sink, interconnections_sink_id) = self.parameterAsSink(
-            parameters, self.INTERCONNECTIONS_OUTPUT, context,
-            layer.fields(), QgsProcessing.TypeVectorLine, layer.sourceCrs()
+            fields, QgsWkbTypes.Point, layer.sourceCrs()
         )
 
-        if not waypoints_sink or not interconnections_sink:
-            raise QgsProcessingException(self.tr("Sink not available."))
+        # Helper function: Call the HERE Sequence API
+        def get_sequence_data(start_coords, destinations):
+            params = {
+                "apikey": here_api_key,
+                "mode": "fastest;pedestrian;traffic:disabled;",
+                "start": start_coords,
+            }
+            for i, dest in enumerate(destinations):
+                params[f"destination{i+1}"] = dest
+            response = requests.get(sequence_url, params=params)
+            if response.status_code != 200:
+                raise QgsProcessingException(
+                    f"Failed to get sequence data: {response.status_code}"
+                )
+            return response.json()
 
-        # Collecter les points par tournée
-        tours = {}
+        # Helper function: Call the HERE Routing API for a pair of points
+        def call_here_routing_api(start, end):
+            params = {
+                "origin": f"{start['lat']},{start['lng']}",
+                "destination": f"{end['lat']},{end['lng']}",
+                "transportMode": "pedestrian",
+                "return": "polyline,summary",
+                "apikey": here_api_key
+            }
+            response = requests.get(routing_url, params=params)
+            return response.json()
+
+        # Extract waypoints from the input layer
+        start_coords = None
+        destinations = []
         for feature in layer.getFeatures():
             group = feature[group_field]
             sequence = feature[sequence_field]
-            x, y = feature.geometry().asPoint()
-            if group not in tours:
-                tours[group] = []
-            tours[group].append({
-                'sequence': sequence,
-                'x': x,
-                'y': y,
-                'id': feature.id(),
-                'end': feature[sequence_field] == 2  # Point de fin
-            })
+            geom = feature.geometry()
+            if geom and geom.isPoint():
+                point = geom.asPoint()
+                lat, lng = point.y(), point.x()
+                if sequence == 0:
+                    start_coords = f"{lat},{lng}"
+                else:
+                    destinations.append(f"{group};{lat},{lng}")
 
-        # Traitement des tournées
-        for group, points in tours.items():
-            feedback.pushInfo(f"Processing tour: {group}")
-            points = sorted(points, key=lambda p: p['sequence'])
-            start = f"{points[0]['y']},{points[0]['x']}"
-            end = next((p for p in points if p['end']), None)
+        if not start_coords or not destinations:
+            raise QgsProcessingException("No valid start or destination points found.")
 
-            destinations = ""
-            for idx, point in enumerate(points[1:], start=1):
-                destinations += f"destination{idx}={point['id']};{point['y']},{point['x']}&"
-            
-            # Construire l'URL
-            url = (
-                f"https://wps.hereapi.com/v8/findsequence2?mode=fastest;pedestrian;traffic:disabled;"
-                f"&start={start}"
-            )
-            if end:
-                url += f"&end={end['y']},{end['x']}"
-            url += f"&{destinations}improveFor=TIME&apikey={api_key}"
+        # Query HERE API to get ordered waypoints
+        feedback.pushInfo("Querying HERE Sequence API...")
+        sequence_data = get_sequence_data(start_coords, destinations)
+        waypoints = sequence_data.get('results', [])[0].get('waypoints', [])
+        waypoints_sorted = sorted(waypoints, key=lambda x: x['sequence'])
 
-            response = requests.get(url)
-            if response.status_code == 200:
-                json_data = response.text.split('processResults(')[1].split(')')[0]
-                response_json = json.loads(json_data)
-                # Process waypoints
-                waypoints = response_json.get('results', [])[0].get('waypoints', [])
-                for wp in waypoints:
-                    f = QgsFeature()
-                    f.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(wp['lng'], wp['lat'])))
-                    f.setAttributes([group, wp['id']])
-                    waypoints_sink.addFeature(f, QgsFeatureSink.FastInsert)
-                # Process interconnections
-                interconnections = response_json.get('results', [])[0].get('interconnections', [])
-                for ic in interconnections:
-                    line_coords = [
-                        (wp['lng'], wp['lat']) for wp in waypoints 
-                        if wp['id'] in [ic['fromWaypoint'], ic['toWaypoint']]
-                    ]
-                    if len(line_coords) == 2:
-                        f = QgsFeature()
-                        f.setGeometry(QgsGeometry.fromPolylineXY([
-                            QgsPointXY(*line_coords[0]), QgsPointXY(*line_coords[1])
-                        ]))
-                        f.setAttributes([group])
-                        interconnections_sink.addFeature(f, QgsFeatureSink.FastInsert)
-            else:
-                feedback.reportError(f"Error for tour {group}: {response.status_code}")
+        # Write waypoints to the output layer
+        feedback.pushInfo("Writing waypoints to output layer...")
+        fid_counter = 0
+        for i, waypoint in enumerate(waypoints_sorted):
+            feature = QgsFeature()
+            feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(waypoint['lng'], waypoint['lat'])))
+            feature.setAttributes([
+                fid_counter,
+                waypoint['id'],
+                waypoint['sequence'],
+                waypoint['lat'],
+                waypoint['lng']
+            ])
+            waypoints_sink.addFeature(feature, QgsFeatureSink.FastInsert)
+            fid_counter += 1
 
-        return {self.WAYPOINTS_OUTPUT: waypoints_sink_id, self.INTERCONNECTIONS_OUTPUT: interconnections_sink_id}
+            # Call HERE Routing API for consecutive waypoints
+            if i < len(waypoints_sorted) - 1:
+                start_point = waypoint
+                end_point = waypoints_sorted[i + 1]
+                route_response = call_here_routing_api(start_point, end_point)
+                route_summary = route_response.get('routes', [])[0].get('sections', [])[0].get('summary', {})
+                feedback.pushInfo(
+                    f"Route {i} → {i+1}: Distance {route_summary.get('length')}m, "
+                    f"Time {route_summary.get('duration')}s"
+                )
+
+        feedback.pushInfo("Processing completed successfully.")
+        return {self.WAYPOINTS_OUTPUT: waypoints_sink_id}
+
 
     def name(self):
         return 'WaypointsSequences'

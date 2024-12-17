@@ -56,7 +56,7 @@ class PluginsInddigoDGLimitedProvider(QgsProcessingProvider):
         """
         #self.addAlgorithm(PluginsInddigoDGAlgorithm())
 
-        #self.addAlgorithm(WaypointSequences())
+        self.addAlgorithm(WaypointSequences())
         self.addAlgorithm(Multimode_GIS_processingAlgorithm())
         self.addAlgorithm(isochroneAlgorithm())
 
