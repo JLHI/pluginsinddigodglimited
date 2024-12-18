@@ -43,7 +43,6 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterEnum,
                        QgsFeature,
                        QgsWkbTypes,
-                       QgsWkbTypes, 
                        QgsField, 
                        QgsFeature,
                        QgsProcessingException,
@@ -51,24 +50,26 @@ from qgis.core import (QgsProcessing,
                        QgsExpressionContextUtils
                        )
 from PyQt5.QtCore import QVariant
-# from .modules.get_pieton import tppietonhere
+from .modules.get_iso import iso
 # from .modules.get_bike import tpgvelohere
 # from .modules.get_car import tpcarhere
 # from .modules.get_car_trafic import tpcartrafichere
 # from .modules.get_tc import tptchere
 
 # from .utils.utils import sanitize_value, safe_string, saveInDb
+from .utils.utils import clean_intermediate_values
 
 
-# Herekey = None
-# # Replace 'variable_name' with the name of your global variable
-# variable_name = 'hereapikey'
 
-# # Get the global variable value
-# try : 
-#     Herekey = QgsExpressionContextUtils.globalScope().variable(variable_name)
-# except Exception as e: 
-#     print(e)
+Herekey = None
+# Replace 'variable_name' with the name of your global variable
+variable_name = 'hereapikey'
+
+# Get the global variable value
+try : 
+    Herekey = QgsExpressionContextUtils.globalScope().variable(variable_name)
+except Exception as e: 
+    print(e)
 
 class isochroneAlgorithm(QgsProcessingAlgorithm):
     """
@@ -94,8 +95,9 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
     DATE_FIELD = 'DATE_FIELD'
     CKB_DEPART_OU_ARRIVEE = 'CKB_DEPART_OU_ARRIVEE'
     CHECKBOXES_MODES = 'CHECKBOXES_MODES'
+    CHECKBOXES_RANGE = 'CHECKBOXES_RANGE'
     DIST_MAX_MARCHE = 'DIST_MAX_MARCHE'
-    VALEUR_MAX = 'VALEUR_MAX'
+    VALEURS = 'VALEURS'
     VALEUR_INTERMEDIAIRES = 'VALEUR_INTERMEDIAIRES'
 
 
@@ -162,9 +164,19 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.CHECKBOXES_MODES,
                 self.tr("Selectionnez les modes que vous voulez requêter"),
-                options=["Piéton", "Vélo", "Voiture", "Voiture avec trafic", "Transport en commun"],
+                options=["Piéton", "Vélo", "Voiture", "Transport en commun"],
                 allowMultiple=True,  # Permet de cocher plusieurs options
                 defaultValue=[0, 1]  # Option 1 et 2 cochées par défaut
+            )
+        )
+
+        # Boutons à cocher simulés avec un Enum à sélection multiple
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.CHECKBOXES_RANGE,
+                self.tr("Selectionnez la valeur que vous voulez requêter"),
+                options=["Distance", "Temps"],
+                allowMultiple=False,  # Permet de cocher plusieurs options
             )
         )
 
@@ -177,6 +189,18 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
+                # Paramètre valeur max
+        self.addParameter(
+            QgsProcessingParameterString(
+                self.VALEURS,
+                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones")
+            )
+        )
+
+    if Herekey is None : 
+        QMessageBox.warning(None, "Clé manquante", "Attention : La clé Here n'est pas configurée. Vous devez ajouter une variable globale 'hereapikey' et saisir votre api Here, puis recharger le plugin")
+
+
 
     def processAlgorithm(self, parameters, context, feedback):
         """
@@ -188,14 +212,146 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         source1 = self.parameterAsSource(parameters, self.INPUT1, context)
         s_id1 = self.parameterAsString(parameters, self.ID_FIELD1_JOIN, context)
         selected_date = self.parameterAsDateTime(parameters, self.DATE_FIELD, context)
-        selected_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_MODES, context)
+        checkboxes_modes = self.parameterAsEnums(parameters, self.CHECKBOXES_MODES, context)
+        range_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_RANGE, context)
         tps_marche_max = self.parameterAsString(parameters,self.DIST_MAX_MARCHE, context)
-
+        valeurs = self.parameterAsString(parameters,self.VALEURS, context)
         if not source1:
             raise QgsProcessingException("Impossible de charger les couches d'entrée.")
+        
+        # Récupération des champs existants + combinés ces derniers
+        fields = QgsFields()  # Initialise un objet QgsFields vide
+        for field in source1.fields():  # Appelez la méthode fields() pour obtenir la liste des champs
+            fields.append(field)
 
-        result = print('hello')
-        return result
+        # Ajout des nouveaux champs
+        new_fields = [
+            QgsField("Mode", QVariant.String),
+            QgsField("Date", QVariant.String),
+            QgsField("Option", QVariant.String),
+            QgsField("Valeur", QVariant.Int),
+            # QgsField("Taille buffer", QVariant.String),
+        ]
+
+        for new_field in new_fields:
+            fields.append(new_field)
+
+        # Création du sink avec les champs combinés
+        sink, errorMsg = self.parameterAsSink(parameters,self.OUTPUT, context, fields, QgsWkbTypes.Polygon, source1.sourceCrs())
+        if not sink:
+            raise QgsProcessingException(f"Erreur lors de la création de la couche de sortie : {errorMsg}.")
+        
+        selected_index = self.parameterAsEnum(parameters, self.CKB_DEPART_OU_ARRIVEE, context)
+        # Transformation des indices de CHECKBOXES_MODES en noms d'options
+        options = ["Heure de départ", "Heure d'arrivée"]
+        selected_heure = options[selected_index]
+
+        # Transformation des indices de CHECKBOXES_RANGE en noms d'options
+        options_range = ["Distance", "Temps"]
+        selected_range_value = [
+            "time" if options_range[i] == 'Temps' else
+            "distance" if options_range[i] == 'Distance' else
+            options_range[i] for i in range_checkboxes
+            ]
+        print("Range sélectionné :", selected_range_value)
+
+        # Transformation des indices de CHECKBOXES_MODES en noms d'options
+        options_modes = ["Piéton", "Vélo", "Voiture", "Transport en commun"]
+        selected_mode_values = [
+            'pedestrian' if options_modes[i] == 'Piéton' else
+            'bicycle' if options_modes[i] == 'Vélo' else
+            'car' if options_modes[i] == 'Voiture' else
+            options_modes[i] for i in checkboxes_modes
+        ]
+        print("Modes sélectionnés :", selected_mode_values)
+
+        # Compute the number of steps to display within the progress bar and
+        # get features from source
+        total = 100.0 / source1.featureCount() if source1.featureCount() else 0
+        features1 = list(source1.getFeatures())
+
+        # Conversion de QDateTime en datetime standard de Python
+        python_datetime = selected_date.toPyDateTime()
+
+        # Formatage de la date selon le format désiré
+        formatted_datetime = python_datetime.strftime("%Y-%m-%dT%H:%M:%S")        
+
+        # Type d'heure à requêter + changement du type de lieu (origine ou destination) en conséquence
+        if "Heure de départ" in selected_heure:
+            type_heure = 'departureTime='
+            type_lieu = f'origin='
+        else:
+            type_heure = 'arrivalTime='
+            type_lieu = f'destination='
+        
+        if "Temps" in selected_range_value :
+            type_range = 'time'
+        else :
+            type_range = 'distance'
+
+        # Appel de la fonction pour formatter les valeurs intermédiaires (supprimant les espaces inutiles et séparer les valeurs par des virgules)
+        try :
+            value = clean_intermediate_values(valeurs)
+        except TypeError as e :
+            print(f"Erreur : {e}")
+
+        # Parcours des feature
+        for current, feature1 in enumerate(features1):
+            # Stop the algorithm if cancel button has been clicked
+            if feedback.isCanceled():
+                break
+
+
+            # Récupère la géométrie
+            geometry1 = feature1.geometry()
+            combined_attributes = feature1.attributes()
+
+
+            # Vérifie si la géométrie est un point et extrait les coordonnées
+            if geometry1 and geometry1.type() == QgsWkbTypes.PointGeometry:
+                point1 = geometry1.asPoint()
+                s_olng, s_olat = point1.x(), point1.y()
+            else:
+                feedback.pushInfo(f"Feature {feature1.id()} n'a pas de géométrie valide. Ignoré.")
+                continue
+
+        # Calcul des isochrones pour chaque mode sélectionné
+            for mode in selected_mode_values:
+                feedback.pushInfo(f"Calcul de l'isochrone pour le mode {mode}")
+
+                try :
+                    # Appel à la fonction iso
+                    results = iso(
+                        s_olat, s_olng, mode, type_range, type_heure,
+                        type_lieu, formatted_datetime, value, Herekey
+                    )
+
+                    print(results)
+                    
+                    for polygon_iso, valeur in results:
+                        enriched_attributes = combined_attributes + [
+                            mode, formatted_datetime, type_range, valeur
+                        ]
+
+                        # Crée une nouvelle entité avec les attributs enrichis
+                        new_feature = QgsFeature(fields)
+                        new_feature.setGeometry(polygon_iso)
+                        new_feature.setAttributes(
+                            enriched_attributes
+                            # f'{valeurs_intermediaires},{valeur_max}' if valeurs_intermediaires else valeur_max  # Taille buffer
+                        )
+
+                        # Ajoute l'entité au `sink`
+                        sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
+                        print(f"Feature ajoutée avec géométrie : {new_feature.geometry().asWkt()}")
+                except Exception as e:
+                    feedback.pushInfo(f"Erreur lors du traitement du mode {mode} : {e}")
+
+            # Mise à jour de la barre de progression
+            feedback.setProgress(int(current * total))
+
+        feedback.pushInfo("Traitement terminé avec succès.")
+        return {self.OUTPUT: sink}
 
     def name(self):
         """
