@@ -48,7 +48,8 @@ from qgis.core import (QgsProcessing,
                        QgsFeature,
                        QgsProcessingException,
                        QgsFields,
-                       QgsExpressionContextUtils
+                       QgsExpressionContextUtils,
+                       QgsProcessingParameterFolderDestination
                        )
 from PyQt5.QtCore import QVariant
 from .modules.get_pieton import tppietonhere
@@ -223,6 +224,24 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                'GENERATE_METADATA',
+                self.tr("Générer une fiche de métadonnées"),
+                options=["Non","Oui"],
+                allowMultiple=False,
+                defaultValue=0  # Par défaut, "Non"
+            )
+        )
+
+        self.addParameter(
+        QgsProcessingParameterFolderDestination(
+            'METADATA_OUTPUT',
+            self.tr("Dossier de sortie pour la fiche de métadonnées"),
+            defaultValue=""  # Vous pouvez définir un dossier par défaut ou laisser vide
+        )
+    )
+
     if Herekey is None : 
         QMessageBox.warning(None, "Clé manquante", "Attention : La clé Here n'est pas configurée. Vous devez ajouter une variable globale 'hereapikey' et saisir votre api Here, puis recharger le plugin")
     
@@ -244,6 +263,10 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         selected_date = self.parameterAsDateTime(parameters, self.DATE_FIELD, context)
         selected_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_MODES, context)
         tps_marche_max = self.parameterAsString(parameters,self.DIST_MAX_MARCHE, context)
+        #metadata
+        generate_metadata = self.parameterAsEnum(parameters, 'GENERATE_METADATA', context)
+        metadata_output = self.parameterAsString(parameters, 'METADATA_OUTPUT', context)
+        compte_requete = 0
 
         if not source1 or not source2:
             raise QgsProcessingException("Impossible de charger les couches d'entrée.")
@@ -355,27 +378,32 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             if "Piéton" in selected_values:
                 marche = tppietonhere(s_olng, s_olat, s_dlng, s_dlat, Herekey)
                 saveInDb("Piéton") 
+                compte_requete = compte_requete+ 1 
                 feedback.pushInfo(f"Temps à pied : {marche} minutes")
 
             if "Vélo" in selected_values:
                 tempsVeloHere, tempsVaeHere = tpgvelohere(s_olng, s_olat, s_dlng, s_dlat, Herekey)
                 saveInDb("Vélo") 
+                compte_requete = compte_requete + 2 
                 feedback.pushInfo(f"Temps en vélo : {tempsVeloHere} minutes ; en VAE : {tempsVaeHere} minutes")
 
             if "Voiture" in selected_values:
                 CarTime = tpcarhere(s_olng, s_olat, s_dlng, s_dlat, Herekey)
                 saveInDb("Voiture") 
+                compte_requete = compte_requete+ 1 
                 feedback.pushInfo(f"Temps en voiture : {CarTime} minutes")
 
             if "Voiture avec trafic" in selected_values:
                 CarTimeTrafic = tpcartrafichere(s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, Herekey)
                 saveInDb("Voiture avec trafic") 
+                compte_requete = compte_requete+ 1 
                 feedback.pushInfo(f"Temps en voiture avec trafic : {CarTimeTrafic} minutes")
 
             if "Transport en commun" in selected_values:
                 total_duration, start_time, end_time, num_transits, time_difference, correspondences = tptchere(
                     s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, tps_marche_max, Herekey
                 )
+                compte_requete = compte_requete+ 1
                 saveInDb("Transport en commun") 
                 feedback.pushInfo(f"Temps TC : {total_duration} minutes, départ : {start_time}, arrivée : {end_time}")
 
@@ -405,9 +433,71 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             # Mise à jour de la barre de progression
             feedback.setProgress(int(current * total))
 
-        feedback.pushInfo("Traitement terminé avec succès.")
-        return {self.OUTPUT: dest_id}
+        try :
+            if generate_metadata : 
+                if not metadata_output:
+                    raise QgsProcessingException("Aucun dossier de sortie n'a été spécifié pour la fiche de métadonnées.")
+                self.get_metadata(metadata_output,selected_heure,formatted_datetime,source1,source2,tps_marche_max,selected_values,feedback,compte_requete,features1)
+                feedback.pushInfo("Fiche éditée avec succès.")
 
+        except Exception as e :
+            raise QgsProcessingException(f"Erreur lors de l'édition de la fiche.{e}")
+        feedback.pushInfo("Traitement terminé avec succès.")
+
+        return {self.OUTPUT: dest_id}
+    
+    def get_metadata(self,metadata_output,selected_heure,formatted_datetime,source1,source2,tps_marche_max,selected_values,feedback,compte_requete,features1) : 
+        import os, datetime
+        current_datetime = datetime.datetime.now()
+        metadata_content = []
+        # Titre
+        metadata_content.append("Fiche de Métadonnées")
+        metadata_content.append("=" * 40)
+
+        # Date et heure du traitement
+        metadata_content.append(f"Date de traitement : {current_datetime}")
+        metadata_content.append(f"Heure d'arrivée ou de départ sélectionnée : {selected_heure}")
+        metadata_content.append(f"Date et heure sélectionnées : {formatted_datetime}")
+        metadata_content.append("")
+
+        # Sources mobilisées
+        metadata_content.append("Sources mobilisées")
+        metadata_content.append("-" * 20)
+        metadata_content.append(f"Couche d'entrée 1 : {source1.sourceName()}")
+        metadata_content.append(f"Couche d'entrée 2 : {source2.sourceName()}")
+        metadata_content.append("API utilisée : HERE")
+        metadata_content.append("")
+
+        # Paramètres déterminants
+        metadata_content.append("Paramètres déterminants")
+        metadata_content.append("-" * 20)
+        metadata_content.append(f"Distance max à pied pour les transports en commun : {tps_marche_max} m")
+        metadata_content.append(f"Modes de transport sélectionnés : {', '.join(selected_values)}")
+        metadata_content.append("")
+
+        # Statistiques
+        metadata_content.append("Statistiques")
+        metadata_content.append("-" * 20)
+        metadata_content.append(f"Nombre total d'entités traitées : {len(features1)}")
+        metadata_content.append(f"Nombre de requêtes API lancées : {compte_requete}")
+        metadata_content.append("")
+
+  
+
+        # Écriture du fichier
+        formatted_datetime = current_datetime.strftime("%Y%m%d_%H%M%S")  # Format : YYYYMMDD_HHMMSS
+
+        # Ajoute la date et l'heure au nom du fichier
+        metadata_file_name = f"metadata_{formatted_datetime}.txt"
+        metadata_file_path = os.path.join(metadata_output, metadata_file_name)
+        try:
+            with open(metadata_file_path, 'w', encoding='utf-8') as f:
+                f.write("\n".join(metadata_content))
+            feedback.pushInfo(f"Fiche de métadonnées générée : {metadata_file_path}")
+        except Exception as e:
+            raise QgsProcessingException(f"Aucun dossier de sortie n'a été spécifié pour la fiche de métadonnées.{str(e)}")
+
+            
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
