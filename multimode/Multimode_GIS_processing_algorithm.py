@@ -132,12 +132,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         # We add a feature sink in which to store our processed features (this
         # usually takes the form of a newly created vector layer when the
         # algorithm is run in QGIS).
-        self.addParameter(
-            QgsProcessingParameterFeatureSink(
-                self.OUTPUT,
-                self.tr('Resultat_multimode')
-            )
-        )
+        
 
         # Menu déroulant pour le champ id origine servant à la jointure
         self.addParameter(
@@ -225,6 +220,14 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         )
 
         self.addParameter(
+        QgsProcessingParameterFolderDestination(
+            'METADATA_OUTPUT',
+            self.tr("Dossier de sortie pour la fiche de métadonnées"),
+            defaultValue=""  # Vous pouvez définir un dossier par défaut ou laisser vide
+        )
+    )
+
+        self.addParameter(
             QgsProcessingParameterEnum(
                 'GENERATE_METADATA',
                 self.tr("Générer une fiche de métadonnées"),
@@ -235,12 +238,11 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         )
 
         self.addParameter(
-        QgsProcessingParameterFolderDestination(
-            'METADATA_OUTPUT',
-            self.tr("Dossier de sortie pour la fiche de métadonnées"),
-            defaultValue=""  # Vous pouvez définir un dossier par défaut ou laisser vide
-        )
-    )
+                    QgsProcessingParameterFeatureSink(
+                        self.OUTPUT,
+                        self.tr('Resultat multimode')
+                    )
+                )
 
     if Herekey is None : 
         QMessageBox.warning(None, "Clé manquante", "Attention : La clé Here n'est pas configurée. Vous devez ajouter une variable globale 'hereapikey' et saisir votre api Here, puis recharger le plugin")
