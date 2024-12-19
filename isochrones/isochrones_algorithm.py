@@ -37,10 +37,13 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingAlgorithm,
                        QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterFeatureSink,
+                       QgsCoordinateReferenceSystem,
+                       QgsCoordinateTransform,
                        QgsProcessingParameterField,
                        QgsProcessingParameterDateTime,
                        QgsProcessingParameterString,
                        QgsProcessingParameterEnum,
+                       QgsProcessingParameterNumber,
                        QgsFeature,
                        QgsWkbTypes,
                        QgsField, 
@@ -51,27 +54,15 @@ from qgis.core import (QgsProcessing,
                        )
 from PyQt5.QtCore import QVariant
 from .modules.get_iso import iso
-# from .modules.get_bike import tpgvelohere
-# from .modules.get_car import tpcarhere
-# from .modules.get_car_trafic import tpcartrafichere
-# from .modules.get_tc import tptchere
-
-# from .utils.utils import sanitize_value, safe_string, saveInDb
-from .utils.utils import clean_intermediate_values
 
 
-
-Herekey = None
-# Replace 'variable_name' with the name of your global variable
-variable_name = 'hereapikey'
-
-# Get the global variable value
-try : 
-    Herekey = QgsExpressionContextUtils.globalScope().variable(variable_name)
-except Exception as e: 
-    print(e)
+from .utils.utils import clean_intermediate_values, saveInDbIso
 
 class isochroneAlgorithm(QgsProcessingAlgorithm):
+    
+    def __init__(self):
+        super().__init__()
+        
     """
     This is an example algorithm that takes a vector layer and
     creates a new identical one.
@@ -88,7 +79,6 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
     # Constants used to refer to parameters and outputs. They will be
     # used when calling the algorithm from another algorithm, or when
     # calling from the QGIS console.
-
     OUTPUT = 'OUTPUT'
     INPUT1 = 'INPUT1'
     ID_FIELD1_JOIN = 'ID_FIELD1_JOIN'
@@ -98,7 +88,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
     CHECKBOXES_RANGE = 'CHECKBOXES_RANGE'
     DIST_MAX_MARCHE = 'DIST_MAX_MARCHE'
     VALEURS = 'VALEURS'
-    VALEUR_INTERMEDIAIRES = 'VALEUR_INTERMEDIAIRES'
+    BUFFER = "BUFFER"
 
 
     def initAlgorithm(self, config):
@@ -189,16 +179,24 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-                # Paramètre valeur max
+        # Paramètre valeur max
         self.addParameter(
             QgsProcessingParameterString(
                 self.VALEURS,
-                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones")
+                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones séparés par des virgules")
             )
         )
 
-    if Herekey is None : 
-        QMessageBox.warning(None, "Clé manquante", "Attention : La clé Here n'est pas configurée. Vous devez ajouter une variable globale 'hereapikey' et saisir votre api Here, puis recharger le plugin")
+        # Paramètre buffer
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.BUFFER,
+                self.tr("Taille du buffer (en mètres)"),
+                type=QgsProcessingParameterNumber.Double,
+                defaultValue=0,
+                optional=True
+            )
+        )
 
 
 
@@ -206,6 +204,21 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         """
         Here is where the processing itself takes place.
         """
+        # Obligé de faire l'import ici et pas eu début car sinon erreur de type 'import ciruclaire' (connaissait pas...)
+        from ..PluginsInddigoDGLimited_provider import PluginsInddigoDGLimitedProvider
+
+        # Appel du provider
+        provider = PluginsInddigoDGLimitedProvider()
+        # Récupérer la clé d'API
+        Herekey = provider.test_API()
+
+        
+        if Herekey is None:
+            feedback.pushInfo("La clé API Here est manquante.")
+            return {}
+
+        # Si la clé API existe, continuez le traitement
+        feedback.pushInfo(f"Clé API Here récupérée : {Herekey}")
         # Retrieve the feature source and sink. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
@@ -216,8 +229,22 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         range_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_RANGE, context)
         tps_marche_max = self.parameterAsString(parameters,self.DIST_MAX_MARCHE, context)
         valeurs = self.parameterAsString(parameters,self.VALEURS, context)
+        buffer_size = self.parameterAsDouble(parameters, self.BUFFER, context)
+
         if not source1:
             raise QgsProcessingException("Impossible de charger les couches d'entrée.")
+        
+        # Vérification du CRS de la couche
+        crs_wgs84 = QgsCoordinateReferenceSystem("EPSG:4326")
+        source_crs = source1.sourceCrs()
+        transform_to_wgs84 = None
+
+        if source_crs != crs_wgs84:
+            feedback.pushInfo("La couche n'est pas en WGS84. Transformation en cours...")
+            transform_to_wgs84 = QgsCoordinateTransform(source_crs, crs_wgs84, context.transformContext())
+        else:
+            transform_to_wgs84 = None
+            feedback.pushInfo("La couche est déjà en WGS84.")
         
         # Récupération des champs existants + combinés ces derniers
         fields = QgsFields()  # Initialise un objet QgsFields vide
@@ -230,14 +257,14 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             QgsField("Date", QVariant.String),
             QgsField("Option", QVariant.String),
             QgsField("Valeur", QVariant.Int),
-            # QgsField("Taille buffer", QVariant.String),
+            QgsField("Buffer_m", QVariant.Int)
         ]
 
         for new_field in new_fields:
             fields.append(new_field)
 
         # Création du sink avec les champs combinés
-        sink, errorMsg = self.parameterAsSink(parameters,self.OUTPUT, context, fields, QgsWkbTypes.Polygon, source1.sourceCrs())
+        sink, errorMsg = self.parameterAsSink(parameters,self.OUTPUT, context, fields, QgsWkbTypes.Polygon, crs_wgs84)
         if not sink:
             raise QgsProcessingException(f"Erreur lors de la création de la couche de sortie : {errorMsg}.")
         
@@ -304,6 +331,9 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
 
             # Récupère la géométrie
             geometry1 = feature1.geometry()
+            # Transformer la géométrie en WGS84 si nécessaire
+            if transform_to_wgs84:
+                geometry1.transform(transform_to_wgs84)
             combined_attributes = feature1.attributes()
 
 
@@ -315,7 +345,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                 feedback.pushInfo(f"Feature {feature1.id()} n'a pas de géométrie valide. Ignoré.")
                 continue
 
-        # Calcul des isochrones pour chaque mode sélectionné
+            # Calcul des isochrones pour chaque mode sélectionné
             for mode in selected_mode_values:
                 feedback.pushInfo(f"Calcul de l'isochrone pour le mode {mode}")
 
@@ -325,20 +355,34 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                         s_olat, s_olng, mode, type_range, type_heure,
                         type_lieu, formatted_datetime, value, Herekey
                     )
+                    saveInDbIso(mode)
 
                     print(results)
                     
                     for polygon_iso, valeur in results:
                         enriched_attributes = combined_attributes + [
-                            mode, formatted_datetime, type_range, valeur
+                            mode, formatted_datetime, type_range, valeur, buffer_size
                         ]
+
+                        # Vérifier si un buffer doit être appliqué
+                        if buffer_size > 0:
+                            # Transformer en CRS métrique (par exemple EPSG:2154 pour Lambert 93)
+                            crs_projected = QgsCoordinateReferenceSystem("EPSG:2154")
+                            transform_to_projected = QgsCoordinateTransform(crs_wgs84, crs_projected, context.transformContext())
+                            transform_to_wgs84_back = QgsCoordinateTransform(crs_projected, crs_wgs84, context.transformContext())
+
+                            # Appliquer la transformation pour buffer
+                            polygon_iso.transform(transform_to_projected)
+                            polygon_iso = polygon_iso.buffer(buffer_size, segments=360)
+
+                            # Revenir au CRS WGS84
+                            polygon_iso.transform(transform_to_wgs84_back)
 
                         # Crée une nouvelle entité avec les attributs enrichis
                         new_feature = QgsFeature(fields)
                         new_feature.setGeometry(polygon_iso)
                         new_feature.setAttributes(
                             enriched_attributes
-                            # f'{valeurs_intermediaires},{valeur_max}' if valeurs_intermediaires else valeur_max  # Taille buffer
                         )
 
                         # Ajoute l'entité au `sink`

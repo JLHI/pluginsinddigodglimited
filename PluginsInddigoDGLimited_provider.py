@@ -30,7 +30,8 @@ __copyright__ = '(C) 2024 by JLHI'
 
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsProcessingProvider
+from qgis.core import QgsProcessingProvider, QgsExpressionContextUtils
+from qgis.PyQt.QtWidgets import QMessageBox
 from .waypointssequences.waypointsequences import WaypointSequences
 from .multimode.Multimode_GIS_processing_algorithm import Multimode_GIS_processingAlgorithm
 from .isochrones.isochrones_algorithm import isochroneAlgorithm
@@ -49,6 +50,27 @@ class PluginsInddigoDGLimitedProvider(QgsProcessingProvider):
         should be implemented here.
         """
         pass
+
+    def test_API(self):
+        """
+        Récupère la clé API Here à partir d'une variable globale QGIS.
+        Si la clé est absente, affiche un avertissement.
+        """
+        Herekey = None
+        # Replace 'variable_name' with the name of your global variable
+        variable_name = 'hereapikey'
+
+        # Get the global variable value 
+        Herekey = QgsExpressionContextUtils.globalScope().variable(variable_name)
+        if Herekey is None : 
+            QMessageBox.warning(
+                None,
+                (
+                    "Clé manquante", 
+                    "Attention : La clé Here n'est pas configurée. Vous devez ajouter une variable globale 'hereapikey' et saisir votre api Here, puis recharger le plugin"
+                )
+            )
+        return Herekey
 
     def loadAlgorithms(self):
         """
