@@ -144,7 +144,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.CHECKBOXES_MODES,
                 self.tr("Selectionnez les modes que vous voulez requêter"),
-                options=["Piéton", "Vélo", "Voiture"],
+                options=["Piéton", "Vélo", "VAE","Voiture"],
                 allowMultiple=True,  # Permet de cocher plusieurs options
                 defaultValue=[0]  # Option 1 et 2 cochées par défaut
             )
@@ -259,11 +259,13 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         print("Range sélectionné :", selected_range_value)
 
         # Transformation des indices de CHECKBOXES_MODES en noms d'options
-        options_modes = ["Piéton", "Vélo", "Voiture", "Transport en commun"]
+        options_modes = ["Piéton", "Vélo", "VAE","Voiture"]
         selected_mode_values = [
             'pedestrian' if options_modes[i] == 'Piéton' else
             'bicycle' if options_modes[i] == 'Vélo' else
             'car' if options_modes[i] == 'Voiture' else
+            'vae' if options_modes[i] == 'VAE' else
+
             options_modes[i] for i in checkboxes_modes
         ]
         print("Modes sélectionnés :", selected_mode_values)
@@ -321,7 +323,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             # Calcul des isochrones pour chaque mode sélectionné
             for mode in selected_mode_values:
                 feedback.pushInfo(f"Calcul de l'isochrone pour le mode {mode}")
-
+                
                 try :
                     # Appel à la fonction iso
                     results = iso(

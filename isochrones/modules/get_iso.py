@@ -25,8 +25,15 @@ except ModuleNotFoundError:
 def iso(lat_origin, lon_origin, mode, selected_range_value, type_heure, type_lieu, formatted_datetime, value, Herekey):
     try:
         # Construction de l'URL
+        if mode == 'vae' :
+            modes = 'bicycle'
+            if selected_range_value == 'time' : 
+                value = ','.join(str(int(float(v) * 1.33)) for v in value.split(','))
+        else :
+            modes = mode
+
         url= (
-            f'https://isoline.router.hereapi.com/v8/isolines?transportMode={mode}&'
+            f'https://isoline.router.hereapi.com/v8/isolines?transportMode={modes}&'
             f'{type_heure}{formatted_datetime}&{type_lieu}{lat_origin},{lon_origin}&'
             f'range[type]={selected_range_value}&range[values]={value}&apikey={Herekey}'
         )
@@ -44,6 +51,8 @@ def iso(lat_origin, lon_origin, mode, selected_range_value, type_heure, type_lie
 
         for isoline in data['isolines']:
             value = isoline['range']['value']
+            if mode == 'vae' and selected_range_value == 'time':
+                value = int(float(value) / 1.33)
             for polygon in isoline['polygons']:
                 outer = polygon['outer']
                 if not outer:
