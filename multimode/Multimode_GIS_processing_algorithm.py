@@ -528,3 +528,45 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
 
     def createInstance(self):
         return Multimode_GIS_processingAlgorithm()
+    
+    def shortHelpString(self):
+        """
+        Retourne le texte d'aide pour l'outil.
+        """
+        return """
+            <h3>Outil Inddigo : Multimode_GIS_processing</h3>
+            <p>Ce plugin permet de :</p>
+            <ul>
+                <li>Calculer les temps de trajet pour différents modes de transport :</li>
+                <ul>
+                    <li><b>Piéton :</b> Calcul du temps de trajet à pied.</li>
+                    <li><b>Vélo :</b> Calcul des temps pour les vélos traditionnels et VAE.</li>
+                    <li><b>Voiture :</b> Calcul des temps de trajet en voiture, avec ou sans trafic.</li>
+                    <li><b>Transport en commun :</b> Calcul détaillé incluant le temps total, les correspondances et les horaires.</li>
+                </ul>
+                <li>Générer une fiche de métadonnées contenant les informations sur les traitements effectués.</li>
+            </ul>
+            <h4>Paramètres</h4>
+            <ul>
+                <li><b>Couche d'entrée 1 :</b> La couche contenant les points d'origine.</li>
+                <li><b>Couche d'entrée 2 :</b> La couche contenant les points de destination.</li>
+                <li><b>Champ ID commun de la couche 1 :</b> Champ utilisé pour la jointure avec la couche 2.</li>
+                <li><b>Champ ID commun de la couche 2 :</b> Champ utilisé pour la jointure avec la couche 1.</li>
+                <li><b>Date et heure :</b> Paramètre permettant de spécifier la date et l'heure pour le calcul des trajets.</li>
+                <li><b>Type d'heure :</b> Spécifie si l'heure fournie correspond à une heure de départ ou d'arrivée.</li>
+                <li><b>Modes de transport :</b> Sélectionnez les modes de transport à inclure dans les calculs.</li>
+                <li><b>Distance max à pied (pedestrian[maxDistance]):</b> 
+                    <p>La distance maximale que l'utilisateur peut parcourir à pied, spécifiée en mètres, à chaque arrêts.</p>
+                    <ul>
+                        <li><b>Plage :</b> 0 m (aucune marche autorisée) à 6000 m (6 km).</li>
+                    </ul>
+                </li>
+                <li><b>Dossier de sortie pour les métadonnées :</b> Emplacement où générer la fiche de métadonnées (facultatif).</li>
+            </ul>
+            <p>Le résultat est une couche géographique enrichie avec les temps de trajet calculés pour chaque mode de transport.</p>
+            <h4>Sorties</h4>
+            <ul>
+                <li><b>Couche résultat :</b> La couche résultante contenant les trajets calculés avec les temps pour chaque mode sélectionné.</li>
+                <li><b>Fiche de métadonnées :</b> (Optionnelle) Une fiche détaillée des traitements, enregistrée dans le dossier spécifié.</li>
+            </ul>
+        """
