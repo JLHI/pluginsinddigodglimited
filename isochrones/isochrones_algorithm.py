@@ -144,9 +144,9 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.CHECKBOXES_MODES,
                 self.tr("Selectionnez les modes que vous voulez requêter"),
-                options=["Piéton", "Vélo", "Voiture", "Transport en commun"],
+                options=["Piéton", "Vélo", "Voiture"],
                 allowMultiple=True,  # Permet de cocher plusieurs options
-                defaultValue=[0, 1]  # Option 1 et 2 cochées par défaut
+                defaultValue=[0]  # Option 1 et 2 cochées par défaut
             )
         )
 
@@ -157,6 +157,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                 self.tr("Selectionnez la valeur que vous voulez requêter"),
                 options=["Distance", "Temps"],
                 allowMultiple=False,  # Permet de cocher plusieurs options
+                defaultValue=1  # Option 1 et 2 cochées par défaut
             )
         )
 
@@ -253,12 +254,8 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         selected_heure = options[selected_index]
 
         # Transformation des indices de CHECKBOXES_RANGE en noms d'options
-        options_range = ["Distance", "Temps"]
-        selected_range_value = [
-            "time" if options_range[i] == 'Temps' else
-            "distance" if options_range[i] == 'Distance' else
-            options_range[i] for i in range_checkboxes
-            ]
+        selected_range_value = "distance" if range_checkboxes == 0 else "time"
+
         print("Range sélectionné :", selected_range_value)
 
         # Transformation des indices de CHECKBOXES_MODES en noms d'options
@@ -290,10 +287,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             type_heure = 'arrivalTime='
             type_lieu = f'destination='
         
-        if "Temps" in selected_range_value :
-            type_range = 'time'
-        else :
-            type_range = 'distance'
+     
 
         # Appel de la fonction pour formatter les valeurs intermédiaires (supprimant les espaces inutiles et séparer les valeurs par des virgules)
         try :
@@ -331,7 +325,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                 try :
                     # Appel à la fonction iso
                     results = iso(
-                        s_olat, s_olng, mode, type_range, type_heure,
+                        s_olat, s_olng, mode, selected_range_value, type_heure,
                         type_lieu, formatted_datetime, value, Herekey
                     )
                     saveInDbIso(mode)
@@ -340,7 +334,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                     
                     for polygon_iso, valeur in results:
                         enriched_attributes = combined_attributes + [
-                            mode, formatted_datetime, type_range, valeur, buffer_size
+                            mode, formatted_datetime, selected_range_value, valeur, buffer_size
                         ]
 
                         # Vérifier si un buffer doit être appliqué
