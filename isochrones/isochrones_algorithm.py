@@ -102,7 +102,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 self.INPUT1,
-                self.tr('Input layer 1 '),
+                self.tr('Couche de point '),
                 [QgsProcessing.TypeVectorAnyGeometry]
             )
         )
@@ -113,20 +113,10 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
-                self.tr('Resultat_isochrone')
+                self.tr('Resultat isochrone')
             )
         )
 
-        # Menu déroulant pour le champ id origine servant à la jointure
-        self.addParameter(
-            QgsProcessingParameterField(
-                self.ID_FIELD1_JOIN,
-                self.tr('Champ ID de la couche 1'),
-                '',
-                parentLayerParameterName=self.INPUT1,  # Lie le champ à la couche d'entrée
-                type=QgsProcessingParameterField.Numeric  # Limite la sélection aux champs numériques
-            )
-        )
 
                 # Ajout d'un paramètre de calendrier
         self.addParameter(
@@ -170,20 +160,11 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-        # Paramètre temps de marche maximum
-        self.addParameter(
-            QgsProcessingParameterString(
-                self.DIST_MAX_MARCHE,
-                self.tr("Distance max à pied (en mètres)"),
-                defaultValue="300"
-            )
-        )
-
         # Paramètre valeur max
         self.addParameter(
             QgsProcessingParameterString(
                 self.VALEURS,
-                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones séparés par des virgules")
+                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones séparés par des virgules (En mètre ou en seconde)")
             )
         )
 
@@ -223,11 +204,9 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
         source1 = self.parameterAsSource(parameters, self.INPUT1, context)
-        s_id1 = self.parameterAsString(parameters, self.ID_FIELD1_JOIN, context)
         selected_date = self.parameterAsDateTime(parameters, self.DATE_FIELD, context)
         checkboxes_modes = self.parameterAsEnums(parameters, self.CHECKBOXES_MODES, context)
         range_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_RANGE, context)
-        tps_marche_max = self.parameterAsString(parameters,self.DIST_MAX_MARCHE, context)
         valeurs = self.parameterAsString(parameters,self.VALEURS, context)
         buffer_size = self.parameterAsDouble(parameters, self.BUFFER, context)
 
