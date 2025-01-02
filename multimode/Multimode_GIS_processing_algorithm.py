@@ -49,7 +49,9 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingException,
                        QgsFields,
                        QgsExpressionContextUtils,
-                       QgsProcessingParameterFolderDestination
+                       QgsProcessingParameterFolderDestination,
+                       QgsProcessingParameterDefinition,
+                       QgsProcessingParameterBoolean
                        )
 from PyQt5.QtCore import QVariant
 from .modules.get_pieton import tppietonhere
@@ -209,6 +211,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
                 defaultValue=[0, 1]  # Option 1 et 2 cochées par défaut
             )
         )
+        
 
         # Paramètre temps de marche maximum
         self.addParameter(
@@ -218,6 +221,49 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
                 defaultValue="300"
             )
         )
+
+        # INTERMODALITE
+        param = QgsProcessingParameterBoolean(
+            'INTERMODALITY_ENABLE',
+            'Activer l\'intermodalité',
+            defaultValue=False
+        )
+        # Marquer comme avancé
+        param.setFlags(param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(param)
+        # Mode véhicule
+        param_vehicle = QgsProcessingParameterEnum(
+            'INTERMODAL_VEHICLE_MODE',
+            'Mode Véhicule',
+            options=['head', 'tail', 'entire'],
+            defaultValue=0,
+            optional=True
+        )
+        param_vehicle.setFlags(param_vehicle.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(param_vehicle)
+
+        # Mode piéton
+        param_pedestrian = QgsProcessingParameterEnum(
+            'INTERMODAL_PEDESTRIAN_MODE',
+            'Mode Piéton',
+            options=['head', 'tail', 'entire'],
+            defaultValue=2,
+            optional=True
+        )
+        param_pedestrian.setFlags(param_pedestrian.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(param_pedestrian)
+
+        # Mode transport en commun
+        param_transit = QgsProcessingParameterEnum(
+            'INTERMODAL_TRANSIT_MODE',
+            'Mode Transport en commun',
+            options=['head', 'tail', 'entire'],
+            defaultValue=1,
+            optional=True
+        )
+        param_transit.setFlags(param_transit.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(param_transit)
+        #Fin paramètres intermodalités 
 
         self.addParameter(
         QgsProcessingParameterFolderDestination(
