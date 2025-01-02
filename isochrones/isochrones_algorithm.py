@@ -165,7 +165,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterString(
                 self.VALEURS,
-                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones séparés par des virgules (En mètre ou en seconde)")
+                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones séparées par des virgules (En mètre ou en seconde)")
             )
         )
 
@@ -400,3 +400,34 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
 
     def createInstance(self):
         return isochroneAlgorithm()
+
+    def shortHelpString(self):
+        """
+        Retourne le texte d'aide pour l'outil.
+        """
+        return """
+            <h3>Outil Inddigo : Isochrone_processing</h3>
+            <p>Ce plugin permet de :</p>
+            <ul>
+                <li>Calculer les isochrones/isodistances pour différents modes de transport :</li>
+                <ul>
+                    <li><b>Piéton :</b> Calcul des isochrones/isodistances de trajet à pied.</li>
+                    <li><b>Vélo :</b> Calcul des isochrones/isodistances pour les vélos traditionnels et VAE.</li>
+                    <li><b>Voiture :</b> Calcul des isochrones/isodistances en voiture, avec ou sans trafic.</li>
+                </ul>
+            </ul>
+            <h4>Paramètres</h4>
+            <ul>
+                <li><b>Couche d'entrée :</b> La couche contenant les points d'origine.</li>
+                <li><b>Date et heure :</b> Paramètre permettant de spécifier la date et l'heure pour le calcul des isochrones.</li>
+                <li><b>Type d'heure :</b> Spécifie si l'heure fournie correspond à une heure de départ ou d'arrivée.</li>
+                <li><b>Modes de transport :</b> Sélectionnez les modes de transport à inclure dans les calculs.</li>
+                <li><b>Mode distance ou temps :</b> Sélectionner si vous voulez calculer des isochrones (facteur temps) ou des isodistances (facteur distance).</li>
+                <li><b>Valeur(s) à requêter :</b> Sélectionne la ou les valeurs nécessaires à la construction du ou des différentes zones de chalandises. Chaque valeur doit être séparée par des virgules avec ou sans espaces.</li>
+            </ul>
+            <p>Le résultat est une couche géographique ayant pour géométrie les isochrones/isodistances ainsi calculés pour chaque mode de transport et récapitulant les options choisies pour construire cette nouvelle couche.</p>
+            <h4>Sorties</h4>
+            <ul>
+                <li><b>Couche résultat :</b> La couche résultante contenant les isochrones calculés pour chaque mode sélectionné.</li>
+            </ul>
+        """
