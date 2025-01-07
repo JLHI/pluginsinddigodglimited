@@ -44,7 +44,7 @@ def iso(lat_origin, lon_origin, mode, selected_range_value, type_heure, type_lie
         response.raise_for_status()
         # Convertir la réponse en JSON
         data = response.json()
-        print(data)
+        # print(data)
 
         polygons = []
 
@@ -57,14 +57,14 @@ def iso(lat_origin, lon_origin, mode, selected_range_value, type_heure, type_lie
                 if not outer:
                     continue
                 data_decode = flexpolyline.decode(outer)
-                print("géométries décodées : ", data_decode)
+                # print("géométries décodées : ", data_decode)
 
                 # Préparation des données afin de construire la géométrie des isolignes
                 data_reversed = [(y, x) for x, y in data_decode]
 
                 polygon_iso = QgsGeometry.fromPolygonXY([[QgsPointXY(x, y) for x, y in data_reversed]])
                 
-                print("polygone : ", polygon_iso)
+                # print("polygone : ", polygon_iso)
 
                 polygons.append((polygon_iso, value))
 

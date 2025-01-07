@@ -102,6 +102,9 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
     CKB_DEPART_OU_ARRIVEE = 'CKB_DEPART_OU_ARRIVEE'
     CHECKBOXES_MODES = 'CHECKBOXES_MODES'
     DIST_MAX_MARCHE = 'DIST_MAX_MARCHE'
+    INTERMODALITY_ENABLE = 'INTERMODALITY_ENABLE'
+    INTERMODAL_VEHICLE_MODE = 'INTERMODAL_VEHICLE_MODE'
+
 
     def initAlgorithm(self, config):
         """
@@ -224,7 +227,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
 
         # INTERMODALITE
         param = QgsProcessingParameterBoolean(
-            'INTERMODALITY_ENABLE',
+            self.INTERMODALITY_ENABLE,
             'Activer l\'intermodalité',
             defaultValue=False
         )
@@ -235,7 +238,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         param_vehicle = QgsProcessingParameterEnum(
             'INTERMODAL_VEHICLE_MODE',
             'Mode Véhicule',
-            options=['head', 'tail', 'entire'],
+            options=['head', 'tail', 'entire'], # À voir comment inclure ces notions de sections (paramètre spécifique de ce que j'ai pu voir)
             defaultValue=0,
             optional=True
         )
@@ -311,6 +314,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         selected_date = self.parameterAsDateTime(parameters, self.DATE_FIELD, context)
         selected_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_MODES, context)
         tps_marche_max = self.parameterAsString(parameters,self.DIST_MAX_MARCHE, context)
+        intermodal = self.parameterAsBoolean(parameters, self.INTERMODALITY_ENABLE, context)
         #metadata
         generate_metadata = self.parameterAsEnum(parameters, 'GENERATE_METADATA', context)
         metadata_output = self.parameterAsString(parameters, 'METADATA_OUTPUT', context)
@@ -382,6 +386,12 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
 
         # Indexer les entités de la seconde source par le champ clé
         source2_features = {feat[s_id2]: feat for feat in source2.getFeatures()}
+
+        ####### INTERMODALITÉ
+        if intermodal :
+            print('intermodalité activée')
+        else :
+            print('intermodalité désactivée')
 
         for current, feature1 in enumerate(features1):
             # Stop the algorithm if cancel button has been clicked

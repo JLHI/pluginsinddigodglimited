@@ -332,8 +332,6 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                     )
                     saveInDbIso(mode)
 
-                    print(results)
-                    
                     for polygon_iso, valeur in results:
                         enriched_attributes = combined_attributes + [
                             mode, formatted_datetime, selected_range_value, valeur, buffer_size
@@ -362,7 +360,6 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
 
                         # Ajoute l'entité au `sink`
                         sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
-                        print(f"Feature ajoutée avec géométrie : {new_feature.geometry().asWkt()}")
                 except Exception as e:
                     feedback.pushInfo(f"Erreur lors du traitement du mode {mode} : {e}")
 
