@@ -10,9 +10,24 @@ from qgis.core import (
     QgsFeatureSink,QgsGeometry,QgsFields,QgsField,
     QgsMessageLog,QgsPointXY,QgsProcessingException,QgsExpressionContextUtils
 )
-import requests
-import flexpolyline
+from PyQt5.Qt import QMessageBox
 
+import requests,platform, subprocess,sys
+try:
+    import flexpolyline
+    print('import completed')
+except ModuleNotFoundError:
+    print('installing flexpolyline')
+    if platform.system() == 'Windows':
+        # subprocess.call(['pip3', 'install', 'flexpolyline', '--user'])
+        subprocess.check_call([sys.executable, "-m", 'pip', 'install', 'flexpolyline'])
+    else:
+        subprocess.call(['python3', '-m', 'pip', 'install', 'flexpolyline' , "--user"])
+    try:
+        import flexpolyline
+        print('installation completed')
+    except ModuleNotFoundError:
+        QMessageBox.information(None, 'ERROR', "Oops ! L'installation du module flexpolyline à échouée. Désolé de ne pas pouvoir aller plus loin...")
 
 
 class WaypointSequences(QgsProcessingAlgorithm):
