@@ -70,7 +70,7 @@ class PluginsInddigoDGLimitedProvider(QgsProcessingProvider):
                     "Attention : La clé Here n'est pas configurée. Vous devez ajouter une variable globale 'hereapikey' et saisir votre api Here, puis recharger le plugin"
                 )
             )
-        return Herekey
+        return Herekey        
 
     def loadAlgorithms(self):
         """

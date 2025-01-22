@@ -3,7 +3,7 @@ from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
-    QgsProcessingParameterString,
+    QgsProcessingParameterEnum,
     QgsProcessingParameterFeatureSink,
     QgsFeature,
     QgsProcessing,QgsWkbTypes,
@@ -11,6 +11,8 @@ from qgis.core import (
     QgsMessageLog,QgsPointXY,QgsProcessingException,QgsExpressionContextUtils
 )
 from PyQt5.Qt import QMessageBox
+from ..api_key_handler import HereAPIHandler
+api_handler = HereAPIHandler()
 
 import requests,platform, subprocess,sys
 try:
@@ -37,17 +39,15 @@ class WaypointSequences(QgsProcessingAlgorithm):
     ROUTE_OUTPUT = 'ROUTE_OUTPUT'
     GROUP_FIELD = 'GROUP_FIELD'
     SEQUENCE_FIELD = 'SEQUENCE_FIELD'
+    CHECKBOXES_MODES = 'CHECKBOXES_MODES'
     
   
     
   
     
     def initAlgorithm(self, config=None):
-        from ..PluginsInddigoDGLimited_provider import PluginsInddigoDGLimitedProvider
-          # Appel du provider
-        provider = PluginsInddigoDGLimitedProvider()
-        self.here_api_key = provider.test_API()
-          # HERE API URLs
+
+        # HERE API URLs
         self.sequence_url = "https://wps.hereapi.com/v8/findsequence2"
         self.routing_url = "https://router.hereapi.com/v8/routes"
 
@@ -74,7 +74,6 @@ class WaypointSequences(QgsProcessingAlgorithm):
                 self.GROUP_FIELD,
                 self.tr('Un champ pour regrouper les points par tournée'),
                 parentLayerParameterName=self.INPUT,
-                optional=True
             )
         )
 
@@ -82,9 +81,17 @@ class WaypointSequences(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterField(
                 self.SEQUENCE_FIELD,
-                self.tr('Le champ contenant la séquence (1 pour le départ, 2 pour le dernier point)'),
+                self.tr('Le champ contenant la séquence (1 pour le départ, 2 pour le dernier point. Le point 2 est optionnel)'),
                 parentLayerParameterName=self.INPUT,
-                optional=True
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.CHECKBOXES_MODES,
+                self.tr("Selectionnez les modes que vous voulez requêter"),
+                options=["Piéton", "Voiture", "camion"],
+                defaultValue=0 # Option 1 et 2 cochées par défaut
             )
         )
 
@@ -111,6 +118,11 @@ class WaypointSequences(QgsProcessingAlgorithm):
         group_field = self.parameterAsString(parameters, self.GROUP_FIELD, context)
         sequence_field = self.parameterAsString(parameters, self.SEQUENCE_FIELD, context)
         id_field = self.parameterAsString(parameters, self.ID_FIELD, context)
+        #Get mode
+        real_values = ["pedestrian", "car", "truck"]
+        selected_index = parameters[self.CHECKBOXES_MODES]
+        selected_mode = real_values[selected_index]
+
 
         # Initialiser les champs pour les couches de sortie
         waypoint_fields = QgsFields()
@@ -184,7 +196,7 @@ class WaypointSequences(QgsProcessingAlgorithm):
             feedback.pushInfo(f"Tournée {group}: Start {start_coords}, End {end_coords}, Destinations: {len(destinations)}")
 
             # Appel API pour séquencer les waypoints
-            sequence_data = self.get_sequence_data(start_coords, destinations, feedback)
+            sequence_data = self.get_sequence_data(start_coords, destinations,selected_mode, feedback)
             waypoints = sequence_data.get('results', [])[0].get('waypoints', [])
             waypoints_sorted = sorted(waypoints, key=lambda x: x['sequence'])
 
@@ -207,7 +219,7 @@ class WaypointSequences(QgsProcessingAlgorithm):
                 start_point = waypoints_sorted[i]
                 end_point = waypoints_sorted[i + 1]
 
-                route_response = self.call_here_routing_api(start_point, end_point,feedback)
+                route_response = self.call_here_routing_api(start_point, end_point,selected_mode,feedback)
                 route_sections = route_response.get('routes', [])[0].get('sections', [])
                 for section in route_sections:
                     summary = section.get('summary', {})
@@ -239,16 +251,55 @@ class WaypointSequences(QgsProcessingAlgorithm):
             self.ROUTE_OUTPUT: route_sink_id
         }
 
-    def get_sequence_data(self, start_coords, destinations, feedback):
+    # def get_sequence_data(self, start_coords, destinations, feedback):
+    #     params = {
+    #         "apikey": self.here_api_key,
+    #         "mode": "fastest;pedestrian;traffic:disabled;",
+    #         "start": start_coords,
+    #     }
+    #     for i, dest in enumerate(destinations):
+    #         params[f"destination{i+1}"] = dest
+    #     feedback.pushInfo(f"Url : {self.sequence_url, params}")
+    #     response = requests.get(self.sequence_url, params=params)
+    #     feedback.pushInfo(f"Réponse de l'url : {response.text}")
+
+    #     if response.status_code != 200:
+    #         raise QgsProcessingException(
+    #             f"Failed to get sequence data: {response.status_code}"
+    #         )
+    #     return response.json()
+    
+    # def call_here_routing_api(self, start_point, end_point,feedback):
+    #     params = {
+    #         "apikey": self.here_api_key,
+    #         "transportMode": "pedestrian",
+    #         "origin": f"{start_point['lat']},{start_point['lng']}",
+    #         "destination": f"{end_point['lat']},{end_point['lng']}",
+    #         "return": "summary,polyline"
+    #     }
+    #     feedback.pushInfo(f"Url : {self.routing_url, params}")
+
+    #     response = requests.get(self.routing_url, params=params)
+    #     feedback.pushInfo(f"Réponse de l'url route : {response.text}")
+
+    #     if response.status_code != 200:
+    #         raise QgsProcessingException(
+    #             f"Failed to get route data: {response.status_code}"
+    #         )
+    #     return response.json()
+    def get_sequence_data(self, start_coords, destinations,mode, feedback):
+        """
+        Effectue une requête pour obtenir des données de séquence.
+        """
         params = {
-            "apikey": self.here_api_key,
-            "mode": "fastest;pedestrian;traffic:disabled;",
-            "start": start_coords,
+            "mode": f"fastest;{mode};traffic:disabled;",
+            "start": start_coords
         }
         for i, dest in enumerate(destinations):
             params[f"destination{i+1}"] = dest
+
         feedback.pushInfo(f"Url : {self.sequence_url, params}")
-        response = requests.get(self.sequence_url, params=params)
+        response = api_handler.make_request(self.sequence_url, params)
         feedback.pushInfo(f"Réponse de l'url : {response.text}")
 
         if response.status_code != 200:
@@ -256,18 +307,20 @@ class WaypointSequences(QgsProcessingAlgorithm):
                 f"Failed to get sequence data: {response.status_code}"
             )
         return response.json()
-    
-    def call_here_routing_api(self, start_point, end_point,feedback):
+
+    def call_here_routing_api(self, start_point, end_point,mode, feedback):
+        """
+        Effectue une requête pour l'API de routage HERE.
+        """
         params = {
-            "apikey": self.here_api_key,
-            "transportMode": "pedestrian",
+            "transportMode": f"{mode}",
             "origin": f"{start_point['lat']},{start_point['lng']}",
             "destination": f"{end_point['lat']},{end_point['lng']}",
             "return": "summary,polyline"
         }
         feedback.pushInfo(f"Url : {self.routing_url, params}")
 
-        response = requests.get(self.routing_url, params=params)
+        response = api_handler.make_request(self.routing_url, params)
         feedback.pushInfo(f"Réponse de l'url route : {response.text}")
 
         if response.status_code != 200:
@@ -319,4 +372,28 @@ class WaypointSequences(QgsProcessingAlgorithm):
 
     def createInstance(self):
         return WaypointSequences()
+    def shortHelpString(self):
+        """
+        Retourne le texte d'aide pour l'outil.
+        """
+        return """
+            <h3>Outil Inddigo : Waypoints Sequences</h3>
+            <p>Cet outil permet de calculer la séquence optimale de waypoints pour un itinéraire, 
+            en utilisant les services HERE API pour le séquencement et le routage.</p>
+            <h4>Paramètres :</h4>
+            <ul>
+                <li><b>Couche d'entrée</b> : La couche vectorielle contenant les points de l'itinéraire.</li>
+                <li><b>Champ contenant un identifiant unique</b> : Un champ qui identifie de manière unique chaque point.</li>
+                <li><b>Un champ pour regrouper les points par tournée</b> : Permet de regrouper les points en fonction d'une clé de groupe. Il doit donc être identique pour chaque tournée</li>
+                <li><b>Le champ contenant la séquence</b> : Il faut définir le point de début pour chaque tournée en remplissant un "1",</li>
+                <li>et si vous voulez indiquer le point final de la tournée, remplissez "2".</li>
+                <li><b>Modes de transport</b> : Sélectionnez le mode de transport à utiliser (Piéton, Voiture, Camion).</li>
+            </ul>
+            <h4>Sorties :</h4>
+            <ul>
+                <li><b>Waypoints Output</b> : Une couche contenant les waypoints optimisés avec leur séquence.</li>
+                <li><b>Route Output</b> : Une couche contenant les itinéraires entre les waypoints.</li>
+            </ul>
+            
+        """
     
