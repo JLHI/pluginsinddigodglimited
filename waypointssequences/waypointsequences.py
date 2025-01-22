@@ -172,7 +172,7 @@ class WaypointSequences(QgsProcessingAlgorithm):
 
             # Utiliser le dernier point comme fin si "2" n'est pas fourni
             if not end_coords and destinations:
-                end_coords = destinations.pop().split(";")[1]
+                end_coords = destinations[-1].split(";")[1] 
 
             if not start_coords or not end_coords:
                 raise QgsProcessingException(f"Tournée {group} ne contient pas de point de départ ou de fin valide.")
@@ -236,43 +236,6 @@ class WaypointSequences(QgsProcessingAlgorithm):
             self.WAYPOINTS_OUTPUT: waypoints_sink_id,
             self.ROUTE_OUTPUT: route_sink_id
         }
-
-    # def get_sequence_data(self, start_coords, destinations, feedback):
-    #     params = {
-    #         "apikey": self.here_api_key,
-    #         "mode": "fastest;pedestrian;traffic:disabled;",
-    #         "start": start_coords,
-    #     }
-    #     for i, dest in enumerate(destinations):
-    #         params[f"destination{i+1}"] = dest
-    #     feedback.pushInfo(f"Url : {self.sequence_url, params}")
-    #     response = requests.get(self.sequence_url, params=params)
-    #     feedback.pushInfo(f"Réponse de l'url : {response.text}")
-
-    #     if response.status_code != 200:
-    #         raise QgsProcessingException(
-    #             f"Failed to get sequence data: {response.status_code}"
-    #         )
-    #     return response.json()
-    
-    # def call_here_routing_api(self, start_point, end_point,feedback):
-    #     params = {
-    #         "apikey": self.here_api_key,
-    #         "transportMode": "pedestrian",
-    #         "origin": f"{start_point['lat']},{start_point['lng']}",
-    #         "destination": f"{end_point['lat']},{end_point['lng']}",
-    #         "return": "summary,polyline"
-    #     }
-    #     feedback.pushInfo(f"Url : {self.routing_url, params}")
-
-    #     response = requests.get(self.routing_url, params=params)
-    #     feedback.pushInfo(f"Réponse de l'url route : {response.text}")
-
-    #     if response.status_code != 200:
-    #         raise QgsProcessingException(
-    #             f"Failed to get route data: {response.status_code}"
-    #         )
-    #     return response.json()
     def get_sequence_data(self, start_coords, destinations,mode, feedback):
         """
         Effectue une requête pour obtenir des données de séquence.
