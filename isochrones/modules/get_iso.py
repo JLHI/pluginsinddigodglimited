@@ -5,21 +5,8 @@ import platform
 from PyQt5.Qt import QMessageBox
 from qgis.core import QgsGeometry, QgsPointXY
 
-try:
-    import flexpolyline
-    print('import completed')
-except ModuleNotFoundError:
-    print('installing flexpolyline')
-    if platform.system() == 'Windows':
-        # subprocess.call(['pip3', 'install', 'flexpolyline', '--user'])
-        subprocess.check_call(['python', "-m", 'pip', 'install', 'flexpolyline'])
-    else:
-        subprocess.call(['python3', '-m', 'pip', 'install', 'flexpolyline' , "--user"])
-    try:
-        import flexpolyline
-        print('installation completed')
-    except ModuleNotFoundError:
-        QMessageBox.information(None, 'ERROR', "Oops ! L'installation du module flexpolyline à échouée. Désolé de ne pas pouvoir aller plus loin...")
+from ...flexpolyline import decode
+
 
 def iso(lat_origin, lon_origin, mode, selected_range_value, type_heure, type_lieu, formatted_datetime, value, Herekey):
     try:
@@ -56,7 +43,7 @@ def iso(lat_origin, lon_origin, mode, selected_range_value, type_heure, type_lie
                 outer = polygon['outer']
                 if not outer:
                     continue
-                data_decode = flexpolyline.decode(outer)
+                data_decode = decode(outer)
                 # print("géométries décodées : ", data_decode)
 
                 # Préparation des données afin de construire la géométrie des isolignes

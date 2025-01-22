@@ -8,29 +8,11 @@ from qgis.core import (
     QgsFeature,
     QgsProcessing,QgsWkbTypes,
     QgsFeatureSink,QgsGeometry,QgsFields,QgsField,
-    QgsMessageLog,QgsPointXY,QgsProcessingException,QgsExpressionContextUtils
+    QgsPointXY,QgsProcessingException
 )
-from PyQt5.Qt import QMessageBox
 from ..api_key_handler import HereAPIHandler
 api_handler = HereAPIHandler()
-
-import requests,platform, subprocess,sys
-try:
-    import flexpolyline
-    print('import completed')
-except ModuleNotFoundError:
-    print('installing flexpolyline')
-    if platform.system() == 'Windows':
-        # subprocess.call(['pip3', 'install', 'flexpolyline', '--user'])
-        subprocess.check_call(['python', "-m", 'pip', 'install', 'flexpolyline'])
-    else:
-        subprocess.call(['python3', '-m', 'pip', 'install', 'flexpolyline' , "--user"])
-    try:
-        import flexpolyline
-        print('installation completed')
-    except ModuleNotFoundError:
-        QMessageBox.information(None, 'ERROR', "Oops ! L'installation du module flexpolyline à échouée. Désolé de ne pas pouvoir aller plus loin...")
-
+from ..flexpolyline import decode
 
 class WaypointSequences(QgsProcessingAlgorithm):
     INPUT = 'INPUT'
@@ -143,6 +125,8 @@ class WaypointSequences(QgsProcessingAlgorithm):
         route_fields.append(QgsField("start_id", QVariant.String))  # ID du point de départ
         route_fields.append(QgsField("end_id", QVariant.String))    # ID du point d'arrivée
         route_fields.append(QgsField("sequence", QVariant.Int))     # Séquence de l'itinéraire
+        route_fields.append(QgsField("tournee", QVariant.String))
+
 
         # Créer les couches de sortie
         (waypoints_sink, waypoints_sink_id) = self.parameterAsSink(
@@ -179,9 +163,9 @@ class WaypointSequences(QgsProcessingAlgorithm):
                     lat, lng = point.y(), point.x()
 
                     # Identifier le point de départ (1) et le point de fin (2)
-                    if sequence == 1:
+                    if sequence == 1 or sequence == '1':
                         start_coords = f"{lat},{lng}"
-                    elif sequence == 2:
+                    elif sequence == 2 or sequence == '2':
                         end_coords = f"{lat},{lng}"
                     else:
                         destinations.append(f"{feature_id};{lat},{lng}")
@@ -241,7 +225,9 @@ class WaypointSequences(QgsProcessingAlgorithm):
                         summary.get('duration', 0),  # Durée de l'itinéraire
                         start_point['id'],   # ID unique du point de départ
                         end_point['id'],     # ID unique du point d'arrivée
-                        i + 1                # Séquence de l'itinéraire (1-based index)
+                        i + 1,                # Séquence de l'itinéraire (1-based index),
+                        group
+
                     ])
                     route_sink.addFeature(feature, QgsFeatureSink.FastInsert)
 
@@ -341,7 +327,7 @@ class WaypointSequences(QgsProcessingAlgorithm):
         """
         try:
             # Décoder la polyligne avec flexpolyline
-            data_decode = flexpolyline.decode(encoded_polyline)
+            data_decode = decode(encoded_polyline)
             print("Géométries décodées : ", data_decode)
 
             # Inverser les coordonnées (x, y) pour obtenir (latitude, longitude)
