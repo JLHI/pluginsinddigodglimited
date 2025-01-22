@@ -12,7 +12,7 @@ except ModuleNotFoundError:
     print('installing flexpolyline')
     if platform.system() == 'Windows':
         # subprocess.call(['pip3', 'install', 'flexpolyline', '--user'])
-        subprocess.check_call([sys.executable, "-m", 'pip', 'install', 'flexpolyline'])
+        subprocess.check_call(['python', "-m", 'pip', 'install', 'flexpolyline'])
     else:
         subprocess.call(['python3', '-m', 'pip', 'install', 'flexpolyline' , "--user"])
     try:
