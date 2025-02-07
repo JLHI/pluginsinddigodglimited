@@ -207,7 +207,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         source1 = self.parameterAsSource(parameters, self.INPUT1, context)
         selected_date = self.parameterAsDateTime(parameters, self.DATE_FIELD, context)
         checkboxes_modes = self.parameterAsEnums(parameters, self.CHECKBOXES_MODES, context)
-        range_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_RANGE, context)
+        range_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_RANGE, context)[0]
         valeurs = self.parameterAsString(parameters,self.VALEURS, context)
         buffer_size = self.parameterAsDouble(parameters, self.BUFFER, context)
 
