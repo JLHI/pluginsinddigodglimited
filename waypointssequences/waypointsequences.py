@@ -10,6 +10,8 @@ from qgis.core import (
     QgsFeatureSink,QgsGeometry,QgsFields,QgsField,
     QgsPointXY,QgsProcessingException
 )
+from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProject, QgsWkbTypes
+
 from ..api_key_handler import HereAPIHandler
 api_handler = HereAPIHandler()
 from ..flexpolyline import decode
@@ -160,8 +162,11 @@ class WaypointSequences(QgsProcessingAlgorithm):
 
                 if geom and QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.PointGeometry:
                     point = geom.asPoint()
-                    lat, lng = point.y(), point.x()
+                    crs_src = layer.sourceCrs()  # Récupération du CRS de la couche 1 
+                    crs_dest = QgsCoordinateReferenceSystem("EPSG:4326")  # Définition du CRS cible
+                    transform = QgsCoordinateTransform(crs_src, crs_dest, QgsProject.instance())  # Création de la transformation
 
+                    lat, lng = transform.transform(point).y(),transform.transform(point).x()
                     # Identifier le point de départ (1) et le point de fin (2)
                     if sequence == 1 or sequence == '1':
                         start_coords = f"{lat},{lng}"
