@@ -51,7 +51,9 @@ from qgis.core import (QgsProcessing,
                        QgsExpressionContextUtils,
                        QgsProcessingParameterFolderDestination,
                        QgsProcessingParameterDefinition,
-                       QgsProcessingParameterBoolean
+                       QgsProcessingParameterBoolean,
+                       QgsCoordinateReferenceSystem,
+                       QgsCoordinateTransform
                        )
 from PyQt5.QtCore import QVariant
 from .modules.get_pieton import tppietonhere
@@ -59,8 +61,8 @@ from .modules.get_bike import tpgvelohere
 from .modules.get_car import tpcarhere
 from .modules.get_car_trafic import tpcartrafichere
 from .modules.get_tc import tptchere
-
 from .utils.utils import sanitize_value, safe_string, saveInDb
+from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProject, QgsWkbTypes
 
 
 Herekey = None
@@ -307,6 +309,9 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         # dictionary returned by the processAlgorithm function.
         source1 = self.parameterAsSource(parameters, self.INPUT1, context)
         source2 = self.parameterAsSource(parameters, self.INPUT2, context)
+      
+    
+
         # s_dlng = self.parameterAsString(parameters, self.FIELD_X_DEST, context)
         # s_dlat = self.parameterAsString(parameters, self.FIELD_Y_DEST, context)
         s_id1 = self.parameterAsString(parameters, self.ID_FIELD1_JOIN, context)
@@ -408,15 +413,25 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             # Récupère la géométrie
             geometry1 = feature1.geometry()
             geometry2 = feature2.geometry()
+            crs_src1 = source1.sourceCrs()  # Récupération du CRS de la couche 1 
+            crs_src2 = source2.sourceCrs()  # Récupération du CRS de la couche
 
+            crs_dest = QgsCoordinateReferenceSystem("EPSG:4326")  # Définition du CRS cible
+            transform1 = QgsCoordinateTransform(crs_src1, crs_dest, QgsProject.instance())  # Création de la transformation
+            transform2 = QgsCoordinateTransform(crs_src2, crs_dest, QgsProject.instance())  # Création de la transformation
 
             # Vérifie si la géométrie est un point et extrait les coordonnées
+                # if geometry1 and geometry1.type() == QgsWkbTypes.PointGeometry:
+                #     point1 = geometry1.asPoint()
+                #     s_olng, s_olat = point1.x(), point1.y()
+                # if geometry2 and geometry2.type() == QgsWkbTypes.PointGeometry:
+                #     point2 = geometry2.asPoint()
+                #     s_dlng, s_dlat = point2.x(), point2.y()
             if geometry1 and geometry1.type() == QgsWkbTypes.PointGeometry:
-                point1 = geometry1.asPoint()
-                s_olng, s_olat = point1.x(), point1.y()
+                s_olng, s_olat = transform1.transform(geometry1.asPoint()).x(), transform1.transform(geometry1.asPoint()).y()
+
             if geometry2 and geometry2.type() == QgsWkbTypes.PointGeometry:
-                point2 = geometry2.asPoint()
-                s_dlng, s_dlat = point2.x(), point2.y()
+                s_dlng, s_dlat = transform2.transform(geometry2.asPoint()).x(), transform2.transform(geometry2.asPoint()).y()
             else:
                 feedback.pushInfo(f"Feature {feature1.id()} ou {feature2.id()} n'a pas de géométrie valide. Ignoré.")
                 continue
