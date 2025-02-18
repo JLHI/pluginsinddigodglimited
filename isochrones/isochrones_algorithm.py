@@ -56,7 +56,7 @@ from PyQt5.QtCore import QVariant
 from .modules.get_iso import iso
 
 
-from .utils.utils import clean_intermediate_values, saveInDbIso
+from .utils.utils import clean_intermediate_values, saveInDbIso,multiply_by_60
 
 class isochroneAlgorithm(QgsProcessingAlgorithm):
     
@@ -165,7 +165,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterString(
                 self.VALEURS,
-                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones séparées par des virgules (En mètre ou en seconde)")
+                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones séparées par des virgules (<b>En mètre<b> ou <b>en minute<b>)")
             )
         )
 
@@ -289,10 +289,13 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             type_heure = 'arrivalTime='
             type_lieu = f'destination='
         
-     
+      
 
         # Appel de la fonction pour formatter les valeurs intermédiaires (supprimant les espaces inutiles et séparer les valeurs par des virgules)
         try :
+            if selected_range_value == 'time' :
+                print(type(valeurs)) 
+                valeurs = multiply_by_60(valeurs)
             value = clean_intermediate_values(valeurs)
         except TypeError as e :
             print(f"Erreur : {e}")
@@ -326,6 +329,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                 
                 try :
                     # Appel à la fonction iso
+
                     results = iso(
                         s_olat, s_olng, mode, selected_range_value, type_heure,
                         type_lieu, formatted_datetime, value, Herekey

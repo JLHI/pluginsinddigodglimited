@@ -67,3 +67,19 @@ def clean_intermediate_values(texte):
         # Remplace les virgules entourées d'espaces ou non, par des virgules simples
         txt_nettoye = re.sub(r'\s*,\s*', ',', texte)
     return txt_nettoye
+
+def multiply_by_60(values):
+        """
+        Multiplie chaque valeur donnée en argument par 60 et retourne une chaîne de texte formatée.
+        - Supporte une seule valeur ou plusieurs.
+        - Ignore les valeurs non numériques et affiche un message d'erreur.
+        """
+        results = []
+        items = values.replace(" ", "").split(",")
+
+        for v in items:
+            try:
+                results.append(f"{int(v) * 60}")
+            except Exception as e:
+                print(e)
+        return ", ".join(results)  # Retourne les résultats sous forme de texte

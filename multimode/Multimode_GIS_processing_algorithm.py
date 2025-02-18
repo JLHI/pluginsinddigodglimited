@@ -340,17 +340,17 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
 
         # Ajout des nouveaux champs
         new_fields = [
-            QgsField("Temps piéton", QVariant.Int),
-            QgsField("Temps vélo", QVariant.Int),
-            QgsField("Temps VAE", QVariant.Int),
-            QgsField("Temps voiture", QVariant.Int),
-            QgsField("Temps voiture avec trafic", QVariant.Int),
-            QgsField("Temps TC", QVariant.String),
-            QgsField("Heure de départ TC", QVariant.String),
-            QgsField("Heure d'arrivée TC", QVariant.String),
-            QgsField("Nombre de transport(s)", QVariant.Int),
-            QgsField("Nombre de minutes d'avance", QVariant.Int),
-            QgsField("Correspondance(s)", QVariant.String),
+            QgsField("marche", QVariant.Int),
+            QgsField("velo", QVariant.Int),
+            QgsField("vae", QVariant.Int),
+            QgsField("voiture", QVariant.Int),
+            QgsField("voiture_tr", QVariant.Int),
+            QgsField("tc_tps", QVariant.String),
+            QgsField("tc_h_dep", QVariant.String),
+            QgsField("tc_h_arr", QVariant.String),
+            QgsField("tc_corr_nb", QVariant.Int),
+            QgsField("tc_tps_av", QVariant.Int),
+            QgsField("tc_corr", QVariant.String),
         ]
 
         for new_field in new_fields:
