@@ -19,7 +19,7 @@ def iso(lat_origin, lon_origin, mode, selected_range_value, type_heure, type_lie
             modes = mode
 
         url= (
-            f'https://isoline.router.hereapi.com/v8/isolines?transportMode={modes}&'
+            f'https://isoline.router.hereapi.com/v8/isolines?transportMode={modes}&optimizeFor=quality&'
             f'{type_heure}{formatted_datetime}&{type_lieu}{lat_origin},{lon_origin}&'
             f'range[type]={selected_range_value}&range[values]={value}&apikey={Herekey}'
         )
