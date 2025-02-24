@@ -310,8 +310,8 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             QgsField("tc_corr_nb", QVariant.Int),
             QgsField("tc_tps_av", QVariant.Int),
             QgsField("tc_corr", QVariant.String),
-            QgsField("tc_voit_tc", QVariant.Int),
-            QgsField("tc_velo_tc", QVariant.String),
+            QgsField("tc_voit_tp", QVariant.Int),
+            QgsField("tc_velo_tp", QVariant.Int),
         ]
 
         for new_field in new_fields:
