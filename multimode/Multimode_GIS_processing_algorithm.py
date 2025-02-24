@@ -451,7 +451,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
                 )
                 compte_requete = compte_requete+ 1
                 saveInDb("Vélo + TC") 
-                feedback.pushInfo(f"Temps Vélo + TC : {velo_tc_time} minutes")
+                feedback.pushInfo(f"Temps Vélo + TC + Vélo: {velo_tc_time} minutes")
 
             # Ajouter les nouvelles valeurs aux attributs
             enriched_attributes = combined_attributes + [

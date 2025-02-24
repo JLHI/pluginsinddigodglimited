@@ -29,7 +29,7 @@ def tpVoitTC(s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, keyhe
         return e
 def tpVeloTC(s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, keyhere):
     try:
-        url =   f'https://intermodal.router.hereapi.com/v8/routes?destination={s_dlat},{s_dlng}&origin={s_olat},{s_olng}&departureTime={formatted_datetime}&taxi[enable]=&rented[enable]&vehicle[enable]=routeHead&vehicle[modes]=bicycle&transit[enable]=routeTail&return=travelSummary&apiKey={keyhere}'
+        url =   f'https://intermodal.router.hereapi.com/v8/routes?destination={s_dlat},{s_dlng}&origin={s_olat},{s_olng}&departureTime={formatted_datetime}&taxi[enable]=&rented[enable]&vehicle[modes]=bicycle&vehicle[enable]=routeTail,routeHead&transit[enable]=routeHead,routeTail,entireRoute&return=travelSummary&apiKey={keyhere}'
         # Envoyer une requête GET
         response = requests.get(url)
         # Convertir la réponse en JSON
