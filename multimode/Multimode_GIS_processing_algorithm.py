@@ -590,6 +590,9 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
                     <li><b>Vélo :</b> Calcul des temps pour les vélos traditionnels et VAE.</li>
                     <li><b>Voiture :</b> Calcul des temps de trajet en voiture, avec ou sans trafic.</li>
                     <li><b>Transport en commun :</b> Calcul détaillé incluant le temps total, les correspondances et les horaires.</li>
+                    <li><b>Voiture + TC :</b> Calcul du temps de trajet en voiture + TC.</li>
+                    <li><b>Vélo + TC :</b> Calcul du temps de trajet à vélo + TC.</li>
+
                 </ul>
                 <li>Générer une fiche de métadonnées contenant les informations sur les traitements effectués.</li>
             </ul>
