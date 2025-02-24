@@ -61,6 +61,7 @@ from .modules.get_bike import tpgvelohere
 from .modules.get_car import tpcarhere
 from .modules.get_car_trafic import tpcartrafichere
 from .modules.get_tc import tptchere
+from .modules.get_intermodalite import tpVoitTC, tpVeloTC
 from .utils.utils import sanitize_value, safe_string, saveInDb
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProject, QgsWkbTypes
 
@@ -211,7 +212,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.CHECKBOXES_MODES,
                 self.tr("Selectionnez les modes que vous voulez requêter"),
-                options=["Piéton", "Vélo", "Voiture", "Voiture avec trafic", "Transport en commun"],
+                options=["Piéton", "Vélo", "Voiture", "Voiture avec trafic", "Transport en commun","Voiture + TC","Vélo + TC"],
                 allowMultiple=True,  # Permet de cocher plusieurs options
                 defaultValue=[0, 1]  # Option 1 et 2 cochées par défaut
             )
@@ -227,48 +228,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
-        # INTERMODALITE
-        param = QgsProcessingParameterBoolean(
-            self.INTERMODALITY_ENABLE,
-            'Activer l\'intermodalité',
-            defaultValue=False
-        )
-        # Marquer comme avancé
-        param.setFlags(param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        self.addParameter(param)
-        # Mode véhicule
-        param_vehicle = QgsProcessingParameterEnum(
-            'INTERMODAL_VEHICLE_MODE',
-            'Mode Véhicule',
-            options=['head', 'tail', 'entire'], # À voir comment inclure ces notions de sections (paramètre spécifique de ce que j'ai pu voir)
-            defaultValue=0,
-            optional=True
-        )
-        param_vehicle.setFlags(param_vehicle.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        self.addParameter(param_vehicle)
-
-        # Mode piéton
-        param_pedestrian = QgsProcessingParameterEnum(
-            'INTERMODAL_PEDESTRIAN_MODE',
-            'Mode Piéton',
-            options=['head', 'tail', 'entire'],
-            defaultValue=2,
-            optional=True
-        )
-        param_pedestrian.setFlags(param_pedestrian.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        self.addParameter(param_pedestrian)
-
-        # Mode transport en commun
-        param_transit = QgsProcessingParameterEnum(
-            'INTERMODAL_TRANSIT_MODE',
-            'Mode Transport en commun',
-            options=['head', 'tail', 'entire'],
-            defaultValue=1,
-            optional=True
-        )
-        param_transit.setFlags(param_transit.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        self.addParameter(param_transit)
-        #Fin paramètres intermodalités 
+       
 
         self.addParameter(
         QgsProcessingParameterFolderDestination(
@@ -319,7 +279,6 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         selected_date = self.parameterAsDateTime(parameters, self.DATE_FIELD, context)
         selected_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_MODES, context)
         tps_marche_max = self.parameterAsString(parameters,self.DIST_MAX_MARCHE, context)
-        intermodal = self.parameterAsBoolean(parameters, self.INTERMODALITY_ENABLE, context)
         #metadata
         generate_metadata = self.parameterAsEnum(parameters, 'GENERATE_METADATA', context)
         metadata_output = self.parameterAsString(parameters, 'METADATA_OUTPUT', context)
@@ -351,6 +310,8 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             QgsField("tc_corr_nb", QVariant.Int),
             QgsField("tc_tps_av", QVariant.Int),
             QgsField("tc_corr", QVariant.String),
+            QgsField("tc_voit_tc", QVariant.Int),
+            QgsField("tc_velo_tc", QVariant.String),
         ]
 
         for new_field in new_fields:
@@ -367,7 +328,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         selected_heure = options[selected_index]
 
         # Transformation des indices de CHECKBOXES_MODES en noms d'options
-        options = ["Piéton", "Vélo", "Voiture", "Voiture avec trafic", "Transport en commun"]
+        options = ["Piéton", "Vélo", "Voiture", "Voiture avec trafic", "Transport en commun","Voiture + TC","Vélo + TC"]
         selected_values = [options[i] for i in selected_checkboxes]
         print("Modes sélectionnés :", selected_values)
 
@@ -392,11 +353,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
         # Indexer les entités de la seconde source par le champ clé
         source2_features = {feat[s_id2]: feat for feat in source2.getFeatures()}
 
-        ####### INTERMODALITÉ
-        if intermodal :
-            print('intermodalité activée')
-        else :
-            print('intermodalité désactivée')
+    
 
         for current, feature1 in enumerate(features1):
             # Stop the algorithm if cancel button has been clicked
@@ -479,6 +436,22 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
                 compte_requete = compte_requete+ 1
                 saveInDb("Transport en commun") 
                 feedback.pushInfo(f"Temps TC : {total_duration} minutes, départ : {start_time}, arrivée : {end_time}")
+            
+            if "Voiture + TC" in selected_values:
+                voiture_tc_time = tpVoitTC(
+                    s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, Herekey
+                )
+                compte_requete = compte_requete+ 1
+                saveInDb("Voiture + TC") 
+                feedback.pushInfo(f"Temps Voiture + TC : {voiture_tc_time} minutes")
+
+            if "Vélo + TC" in selected_values:
+                velo_tc_time = tpVeloTC(
+                    s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, Herekey
+                )
+                compte_requete = compte_requete+ 1
+                saveInDb("Vélo + TC") 
+                feedback.pushInfo(f"Temps Vélo + TC : {velo_tc_time} minutes")
 
             # Ajouter les nouvelles valeurs aux attributs
             enriched_attributes = combined_attributes + [
@@ -493,6 +466,9 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
                 sanitize_value(num_transits, 0),
                 sanitize_value(time_difference, 0),
                 safe_string(correspondences),
+                sanitize_value(voiture_tc_time, 0),
+                sanitize_value(velo_tc_time, 0),
+
             ]
 
             # Crée une nouvelle entité avec les attributs enrichis
