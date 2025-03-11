@@ -403,6 +403,8 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             num_transits = None
             time_difference = None
             correspondences = None
+            voiture_tc_time = None
+            velo_tc_time = None
             
             # Calculs selon les options sélectionnées
             if "Piéton" in selected_values:
