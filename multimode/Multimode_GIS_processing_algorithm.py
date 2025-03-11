@@ -463,7 +463,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
                 sanitize_value(CarTime, 0),
                 sanitize_value(CarTimeTrafic, 0),
                 sanitize_value(total_duration, 0),
-                start_time,
+                sanitize_value(start_time, None),
                 sanitize_value(end_time, None),
                 sanitize_value(num_transits, 0),
                 sanitize_value(time_difference, 0),
