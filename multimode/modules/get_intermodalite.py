@@ -20,7 +20,7 @@ def tpVoitTC(s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, keyhe
                     if action.get("action") == "park":
                         voiture_tc_time += action.get("duration", 0)
 
-        voiture_tc_time = round(voiture_tc_time / 60, 2)
+        voiture_tc_time = int(voiture_tc_time / 60)
         print(f"Temps en voiture + tc : {voiture_tc_time} minutes")
 
         # Retourner les durées trouvées
@@ -50,7 +50,7 @@ def tpVeloTC(s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, keyhe
                     if action.get("action") == "park":
                         velo_tc_time += action.get("duration", 0)
 
-        velo_tc_time = round(velo_tc_time / 60, 2)
+        velo_tc_time = int(velo_tc_time / 60)
         print(f"Temps en vélo + tc : {velo_tc_time} minutes")
 
         # Retourner les durées trouvées
