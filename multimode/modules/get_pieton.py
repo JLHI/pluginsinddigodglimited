@@ -42,7 +42,7 @@ def getPieton(self, s_id, s_olng, s_olat, s_dlng, s_dlat, keytpmarche):
         vide = 99999
         return vide
 
-def tppietonhere(s_olng, s_olat, s_dlng, s_dlat, keyvelohere):
+def tppietonhere(s_olng, s_olat, s_dlng, s_dlat, keyvelohere, feedback):
     try:
         url = f'https://router.hereapi.com/v8/routes?transportMode=pedestrian&origin={s_olat},{s_olng}&destination={s_dlat},{s_dlng}&return=summary&apiKey={keyvelohere}'
         # Envoyer une requête GET
@@ -52,6 +52,12 @@ def tppietonhere(s_olng, s_olat, s_dlng, s_dlat, keyvelohere):
         print(data)
         # Extraire les durées
         HerePedestrianTime = 0
+        routes = data.get("routes", [])
+        if not routes:
+            feedback.pushWarning("Pas de route disponible")
+
+            return 9999
+        
         for route in data.get("routes", []):
             for section in route.get("sections", []):
                 # Accéder à la durée dans le résumé
@@ -63,8 +69,11 @@ def tppietonhere(s_olng, s_olat, s_dlng, s_dlat, keyvelohere):
         # Retourner les durées trouvées
         return HerePedestrianTime
     except requests.RequestException as e:
-        return e
+        feedback.pushWarning(f"Erreur temps piéton: {e} ")
+        return 9999
     except ValueError as e:
-        return e
+        feedback.pushWarning(f"Erreur temps piéton: {e} ")
+        return 9999
     except Exception as e:
-        return e
+        feedback.pushWarning(f"Erreur temps piéton: {e} ")
+        return 9999

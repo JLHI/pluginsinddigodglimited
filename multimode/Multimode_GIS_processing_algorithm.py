@@ -304,7 +304,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             QgsField("vae", QVariant.Int),
             QgsField("voiture", QVariant.Int),
             QgsField("voiture_tr", QVariant.Int),
-            QgsField("tc_tps", QVariant.String),
+            QgsField("tc_tps", QVariant.Int),
             QgsField("tc_h_dep", QVariant.String),
             QgsField("tc_h_arr", QVariant.String),
             QgsField("tc_corr_nb", QVariant.Int),
@@ -408,32 +408,32 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             
             # Calculs selon les options sélectionnées
             if "Piéton" in selected_values:
-                marche = tppietonhere(s_olng, s_olat, s_dlng, s_dlat, Herekey)
+                marche = tppietonhere(s_olng, s_olat, s_dlng, s_dlat, Herekey,feedback)
                 saveInDb("Piéton") 
                 compte_requete = compte_requete+ 1 
                 feedback.pushInfo(f"Temps à pied : {marche} minutes")
 
             if "Vélo" in selected_values:
-                tempsVeloHere, tempsVaeHere = tpgvelohere(s_olng, s_olat, s_dlng, s_dlat, Herekey)
+                tempsVeloHere, tempsVaeHere = tpgvelohere(s_olng, s_olat, s_dlng, s_dlat, Herekey,feedback)
                 saveInDb("Vélo") 
                 compte_requete = compte_requete + 2 
                 feedback.pushInfo(f"Temps en vélo : {tempsVeloHere} minutes ; en VAE : {tempsVaeHere} minutes")
 
             if "Voiture" in selected_values:
-                CarTime = tpcarhere(s_olng, s_olat, s_dlng, s_dlat, Herekey)
+                CarTime = tpcarhere(s_olng, s_olat, s_dlng, s_dlat, Herekey,feedback)
                 saveInDb("Voiture") 
                 compte_requete = compte_requete+ 1 
                 feedback.pushInfo(f"Temps en voiture : {CarTime} minutes")
 
             if "Voiture avec trafic" in selected_values:
-                CarTimeTrafic = tpcartrafichere(s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, Herekey)
+                CarTimeTrafic = tpcartrafichere(s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, Herekey,feedback)
                 saveInDb("Voiture avec trafic") 
                 compte_requete = compte_requete+ 1 
                 feedback.pushInfo(f"Temps en voiture avec trafic : {CarTimeTrafic} minutes")
 
             if "Transport en commun" in selected_values:
                 total_duration, start_time, end_time, num_transits, time_difference, correspondences = tptchere(
-                    s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, tps_marche_max, Herekey
+                    s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, tps_marche_max, Herekey,feedback
                 )
                 compte_requete = compte_requete+ 1
                 saveInDb("Transport en commun") 
@@ -441,7 +441,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
             
             if "Voiture + TC" in selected_values:
                 voiture_tc_time = tpVoitTC(
-                    s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, Herekey
+                    s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, Herekey,feedback
                 )
                 compte_requete = compte_requete+ 1
                 saveInDb("Voiture + TC") 
@@ -449,7 +449,7 @@ class Multimode_GIS_processingAlgorithm(QgsProcessingAlgorithm):
 
             if "Vélo + TC" in selected_values:
                 velo_tc_time = tpVeloTC(
-                    s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, Herekey
+                    s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, Herekey,feedback
                 )
                 compte_requete = compte_requete+ 1
                 saveInDb("Vélo + TC") 

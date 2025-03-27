@@ -1,5 +1,5 @@
 import requests
-def tpVoitTC(s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, keyhere):
+def tpVoitTC(s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, keyhere,feedback):
     try:
         url =   f'https://intermodal.router.hereapi.com/v8/routes?destination={s_dlat},{s_dlng}&origin={s_olat},{s_olng}&departureTime={formatted_datetime}&taxi[enable]=&rented[enable]&via=place:parkingLot;strategy=diverseChoices&vehicle[enable]=routeHead&vehicle[modes]=car&transit[enable]=routeTail&return=travelSummary&apiKey={keyhere}'
         # Envoyer une requête GET
@@ -24,10 +24,12 @@ def tpVoitTC(s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, keyhe
         print(f"Temps en voiture + tc : {voiture_tc_time} minutes")
 
         # Retourner les durées trouvées
+        
         return voiture_tc_time
     except Exception as e:
-        return e
-def tpVeloTC(s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, keyhere):
+        feedback.pushWarning(f"Erreur temps Voiture + TC : {voiture_tc_time}")
+        return 9999
+def tpVeloTC(s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, keyhere,feedback):
     try:
         url =   f'https://intermodal.router.hereapi.com/v8/routes?destination={s_dlat},{s_dlng}&origin={s_olat},{s_olng}&departureTime={formatted_datetime}&taxi[enable]=&rented[enable]&vehicle[modes]=bicycle&vehicle[enable]=routeTail,routeHead&transit[enable]=routeHead,routeTail,entireRoute&return=travelSummary&apiKey={keyhere}'
         # Envoyer une requête GET
@@ -55,5 +57,5 @@ def tpVeloTC(s_olng, s_olat, s_dlng, s_dlat,type_heure,formatted_datetime, keyhe
         return velo_tc_time
     except Exception as e:
         print(e)
-        return e
-
+        feedback.pushWarning(f"Erreur temps Vélo + TC + Vélo: {e} ")
+        return 9999

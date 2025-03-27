@@ -44,7 +44,7 @@ def tpgvelogoogle(self, s_id, s_olng, s_olat, s_dlng, s_dlat, keytpvelo):
             videvae = 9999
             return vide,9999
 
-def tpgvelohere(s_olng, s_olat, s_dlng, s_dlat, keyvelohere):
+def tpgvelohere(s_olng, s_olat, s_dlng, s_dlat, keyvelohere,feedback):
     try:
         url = f'https://router.hereapi.com/v8/routes?transportMode=bicycle&origin={s_olat},{s_olng}&destination={s_dlat},{s_dlng}&return=summary&apiKey={keyvelohere}'
         # Envoyer une requête GET
@@ -53,6 +53,11 @@ def tpgvelohere(s_olng, s_olat, s_dlng, s_dlat, keyvelohere):
         data = response.json()
         # Extraire les durées
         HereBikeTime = 0
+        routes = data.get("routes", [])
+        if not routes:
+            feedback.pushWarning("Pas de route disponible")
+
+            return 9999,9999
         for route in data.get("routes", []):
             for section in route.get("sections", []):
                 # Accéder à la durée dans le résumé
@@ -65,8 +70,11 @@ def tpgvelohere(s_olng, s_olat, s_dlng, s_dlat, keyvelohere):
         # Retourner les durées trouvées
         return HereBikeTime,HereVAETime
     except requests.RequestException as e:
+        feedback.pushWarning(f"Erreur temps vélo et vae: {e} ")
         return e,e
     except ValueError as e:
+        feedback.pushWarning(f"Erreur temps vélo et vae: {e} ")
         return e,e
     except Exception as e:
+        feedback.pushWarning(f"Erreur temps vélo et vae: {e} ")
         return e,e

@@ -3,7 +3,7 @@ import pytz
 from dateutil.parser import isoparse
 from ..utils.utils import parse_time, extract_correspondence
 
-def tptchere(s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, tps_marche_max, Herekey):
+def tptchere(s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, tps_marche_max, Herekey, feedback):
     try:
         # Construire et envoyer la requête
         url = f"https://transit.router.hereapi.com/v8/routes?origin={s_olat},{s_olng}&destination={s_dlat},{s_dlng}&pedestrian[maxDistance]={tps_marche_max}{type_heure}{formatted_datetime}&apiKey={Herekey}"
@@ -13,7 +13,9 @@ def tptchere(s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, tps
         # Vérifier les routes disponibles
         routes = data.get("routes", [])
         if not routes:
-            return "Aucun itinéraire disponible.", *[None] * 5
+            feedback.pushWarning("Pas de route disponible")
+
+            return "9999", *[9999] * 5
 
         # Initialiser les variables
         tz = pytz.timezone('Europe/Paris')
@@ -32,6 +34,7 @@ def tptchere(s_olng, s_olat, s_dlng, s_dlat, formatted_datetime, type_heure, tps
         # Résultat final
         return total_duration, str(start_time), str(end_time) , len(correspondences), time_difference, correspondences
 
-    except Exception as e:
-        print(e)
-        return str(e), *[None] * 5
+    except Exception as e :
+        feedback.pushWarning(f"Erreur temps TC: {e} ")
+        return 9999, *[9999] * 5
+
