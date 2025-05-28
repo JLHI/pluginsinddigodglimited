@@ -4,12 +4,13 @@ import subprocess
 import platform
 from PyQt5.Qt import QMessageBox
 from qgis.core import QgsGeometry, QgsPointXY
-
+import time
 from ...flexpolyline import decode
 
 
 def iso(lat_origin, lon_origin, mode, selected_range_value, type_heure, type_lieu, formatted_datetime, value, Herekey):
     try:
+        time.sleep(0.5)
         # Construction de l'URL
         if mode == 'vae' :
             modes = 'bicycle'
