@@ -22,9 +22,9 @@
  ***************************************************************************/
 """
 
-__author__ = 'JLHI'
+__author__ = 'JLHI - CG'
 __date__ = '2024-11-22'
-__copyright__ = '(C) 2024 by JLHI'
+__copyright__ = '(C) 2024 by JLHI - CG'
 
 # This will get replaced with a git SHA1 when you do a git archive
 

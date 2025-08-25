@@ -22,9 +22,9 @@
  ***************************************************************************/
 """
 
-__author__ = 'JLHI'
+__author__ = 'JLHI - CG'
 __date__ = '2024-11-22'
-__copyright__ = '(C) 2024 by JLHI'
+__copyright__ = '(C) 2024 by JLHI - CG'
 
 # This will get replaced with a git SHA1 when you do a git archive
 
@@ -35,7 +35,7 @@ from qgis.PyQt.QtWidgets import QMessageBox
 from .waypointssequences.waypointsequences import WaypointSequences
 from .multimode.Multimode_GIS_processing_algorithm import Multimode_GIS_processingAlgorithm
 from .isochrones.isochrones_algorithm import isochroneAlgorithm
-
+from .itineraires_here.itineraires_here_algorithm import ItineraireParLaRouteHereAlgorithm
 class PluginsInddigoDGLimitedProvider(QgsProcessingProvider):
 
     def __init__(self):
@@ -81,6 +81,7 @@ class PluginsInddigoDGLimitedProvider(QgsProcessingProvider):
         self.addAlgorithm(WaypointSequences())
         self.addAlgorithm(Multimode_GIS_processingAlgorithm())
         self.addAlgorithm(isochroneAlgorithm())
+        self.addAlgorithm(ItineraireParLaRouteHereAlgorithm())
 
         # add additional algorithms here
         # self.addAlgorithm(MyOtherAlgorithm())
