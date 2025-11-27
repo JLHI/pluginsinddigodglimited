@@ -144,7 +144,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.CHECKBOXES_MODES,
                 self.tr("Selectionnez les modes que vous voulez requêter"),
-                options=["Piéton", "Vélo", "VAE","Voiture","Transport en commun"],
+                options=["Piéton", "Vélo", "VAE","Voiture"],
                 allowMultiple=True,  # Permet de cocher plusieurs options
                 defaultValue=[0]  
             )
@@ -259,15 +259,12 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         print("Range sélectionné :", selected_range_value)
 
         # Transformation des indices de CHECKBOXES_MODES en noms d'options
-        options_modes = ["Piéton", "Vélo", "VAE","Voiture","Transport en commun"]
+        options_modes = ["Piéton", "Vélo", "VAE","Voiture"]
         selected_mode_values = [
             'pedestrian' if options_modes[i] == 'Piéton' else
             'bicycle' if options_modes[i] == 'Vélo' else
             'car' if options_modes[i] == 'Voiture' else
             'vae' if options_modes[i] == 'VAE' else
-
-            'bus' if options_modes[i] == 'Transport en commun' else 
-
 
             options_modes[i] for i in checkboxes_modes
         ]
