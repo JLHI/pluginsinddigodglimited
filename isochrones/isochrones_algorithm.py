@@ -233,30 +233,30 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         # Gestion UI : Afficher ou masquer les paramètres de vitesse en fonction des modes sélectionnés
         
         # -- Piéton : montrer la vitesse piéton seulement si "Piéton" est coché (index 0)
-        self.parameterDefinition("PEDESTRIAN_SPEED_KMH").setMetadata({
-            'widget_wrapper': {
-                'enabled_when': { 'CHECKBOXES_MODES': ["Piéton"] }
-            }
-        })
+        # self.parameterDefinition("PEDESTRIAN_SPEED_KMH").setMetadata({
+        #     'widget_wrapper': {
+        #         'enabled_when': { 'CHECKBOXES_MODES': ["Piéton"] }
+        #     }
+        # })
 
-        # -- Vélo : montrer presets + vitesse libre seulement si "Vélo" est coché (index 1)
-        self.parameterDefinition("BIKE_PRESET").setMetadata({
-            'widget_wrapper': {
-                'enabled_when': { 'CHECKBOXES_MODES': ["Vélo"] }
-            }
-        })
-        self.parameterDefinition("BIKE_SPEED_CUSTOM_KMH").setMetadata({
-            'widget_wrapper': {
-                'enabled_when': { 'CHECKBOXES_MODES': ["Vélo"] }
-            }
-        })
+        # # -- Vélo : montrer presets + vitesse libre seulement si "Vélo" est coché (index 1)
+        # self.parameterDefinition("BIKE_PRESET").setMetadata({
+        #     'widget_wrapper': {
+        #         'enabled_when': { 'CHECKBOXES_MODES': ["Vélo"] }
+        #     }
+        # })
+        # self.parameterDefinition("BIKE_SPEED_CUSTOM_KMH").setMetadata({
+        #     'widget_wrapper': {
+        #         'enabled_when': { 'CHECKBOXES_MODES': ["Vélo"] }
+        #     }
+        # })
 
-        # -- Voiture : montrer le cap voiture seulement si "Voiture" est coché (index 2)
-        self.parameterDefinition("CAR_SPEED_CAP_KMH").setMetadata({
-            'widget_wrapper': {
-                'enabled_when': { 'CHECKBOXES_MODES': ["Voiture"] }
-            }
-        })
+        # # -- Voiture : montrer le cap voiture seulement si "Voiture" est coché (index 2)
+        # self.parameterDefinition("CAR_SPEED_CAP_KMH").setMetadata({
+        #     'widget_wrapper': {
+        #         'enabled_when': { 'CHECKBOXES_MODES': ["Voiture"] }
+        #     }
+        # })
 
 
 
