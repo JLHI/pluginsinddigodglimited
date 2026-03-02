@@ -118,7 +118,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         )
 
 
-                # Ajout d'un paramètre de calendrier
+        # Ajout d'un paramètre de calendrier
         self.addParameter(
             QgsProcessingParameterDateTime(
                 self.DATE_FIELD,
@@ -144,9 +144,59 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.CHECKBOXES_MODES,
                 self.tr("Selectionnez les modes que vous voulez requêter"),
-                options=["Piéton", "Vélo", "VAE","Voiture"],
+                options=["Piéton", "Vélo","Voiture"],
                 allowMultiple=True,  # Permet de cocher plusieurs options
                 defaultValue=[0]  
+            )
+        )
+        
+        # Piéton (vitesse en km/h) -> sera envoyé nativement en m/s à l'API via pedestrian[speed]
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                "PEDESTRIAN_SPEED_KMH",
+                self.tr("Vitesse piéton (min 1.8 km/h - max 7.2 km/h)"),
+                type=QgsProcessingParameterNumber.Double,
+                defaultValue=4,
+                optional=True
+            )
+        )
+
+        # Voiture (Limiteur de vitesse en km/h) -> si renseigné, envoyé en m/s via vehicle[speedCap]
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                "CAR_SPEED_CAP_KMH",
+                self.tr("Limiteur de vitesse voiture (min 3.6 km/h - max 252 km/h)"),
+                type=QgsProcessingParameterNumber.Double,
+                defaultValue=None,
+                optional=True
+            )
+        )
+
+        # Vélo : presets
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                "BIKE_PRESET",
+                self.tr("Preset vitesse Vélo"),
+                options=[
+                    "10 km/h (lent)",
+                    "15 km/h (standard)",
+                    "20 km/h (rapide)",
+                    "25 km/h (Limitation maximum VAE)"
+                ],
+                allowMultiple=False,
+                defaultValue=1,  # 15 km/h par défaut
+                optional=True
+            )
+        )
+
+        # Vélo : vitesse perso (km/h) - si renseignée, elle prévaut sur le preset
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                "BIKE_SPEED_CUSTOM_KMH",
+                self.tr("Vitesse Vélo personnalisée (km/h)"),
+                type=QgsProcessingParameterNumber.Double,
+                defaultValue=None,
+                optional=True
             )
         )
 
@@ -180,6 +230,34 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
+        # Gestion UI : Afficher ou masquer les paramètres de vitesse en fonction des modes sélectionnés
+        
+        # -- Piéton : montrer la vitesse piéton seulement si "Piéton" est coché (index 0)
+        self.parameterDefinition("PEDESTRIAN_SPEED_KMH").setMetadata({
+            'widget_wrapper': {
+                'enabled_when': { 'CHECKBOXES_MODES': ["Piéton"] }
+            }
+        })
+
+        # -- Vélo : montrer presets + vitesse libre seulement si "Vélo" est coché (index 1)
+        self.parameterDefinition("BIKE_PRESET").setMetadata({
+            'widget_wrapper': {
+                'enabled_when': { 'CHECKBOXES_MODES': ["Vélo"] }
+            }
+        })
+        self.parameterDefinition("BIKE_SPEED_CUSTOM_KMH").setMetadata({
+            'widget_wrapper': {
+                'enabled_when': { 'CHECKBOXES_MODES': ["Vélo"] }
+            }
+        })
+
+        # -- Voiture : montrer le cap voiture seulement si "Voiture" est coché (index 2)
+        self.parameterDefinition("CAR_SPEED_CAP_KMH").setMetadata({
+            'widget_wrapper': {
+                'enabled_when': { 'CHECKBOXES_MODES': ["Voiture"] }
+            }
+        })
+
 
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -211,6 +289,31 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         valeurs = self.parameterAsString(parameters,self.VALEURS, context)
         buffer_size = self.parameterAsDouble(parameters, self.BUFFER, context)
 
+        # --- [GESTION DES PARAMÈTRES DE VITESSE] ---
+        ped_speed_kmh = self.parameterAsDouble(parameters, "PEDESTRIAN_SPEED_KMH", context)
+        car_speed_cap_kmh = self.parameterAsDouble(parameters, "CAR_SPEED_CAP_KMH", context)
+
+        bike_preset_idx = self.parameterAsEnum(parameters, "BIKE_PRESET", context)
+        bike_speed_custom = self.parameterAsDouble(parameters, "BIKE_SPEED_CUSTOM_KMH", context)
+
+        # Mapping preset -> km/h
+        bike_presets = [10.0, 15.0, 20.0, 25.0]
+
+        # Sélection de la vitesse vélo
+        bike_speed_kmh = bike_presets[bike_preset_idx]
+        if bike_speed_custom is not None and bike_speed_custom > 0:
+            bike_speed_kmh = bike_speed_custom
+
+        # Conversion utiles pour l'API de km/h en m/s
+        ped_speed_ms = ped_speed_kmh * 1000.0 / 3600.0 if ped_speed_kmh and ped_speed_kmh > 0 else None
+        car_speed_cap_ms = car_speed_cap_kmh * 1000.0 / 3600.0 if car_speed_cap_kmh and car_speed_cap_kmh > 0 else None
+
+        # Vitesse base vélo (sert au coefficient de correction temps pour bicycle)
+        base_bike_speed_kmh = 15.0
+
+# Fin des paramètres de la couche d'entrée, préparation de la couche #
+
+        # --- [GESTION DE LA COUCHE D'ENTRÉE] ---
         if not source1:
             raise QgsProcessingException("Impossible de charger les couches d'entrée.")
         
@@ -237,7 +340,8 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             QgsField("Date", QVariant.String),
             QgsField("Option", QVariant.String),
             QgsField("Valeur", QVariant.Int),
-            QgsField("Buffer_m", QVariant.Int)
+            QgsField("Buffer_m", QVariant.Int),
+            QgsField("Vitesse_kmh", QVariant.Double)
         ]
 
         for new_field in new_fields:
@@ -259,16 +363,28 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         print("Range sélectionné :", selected_range_value)
 
         # Transformation des indices de CHECKBOXES_MODES en noms d'options
-        options_modes = ["Piéton", "Vélo", "VAE","Voiture"]
+        options_modes = ["Piéton", "Vélo","Voiture"]
         selected_mode_values = [
             'pedestrian' if options_modes[i] == 'Piéton' else
             'bicycle' if options_modes[i] == 'Vélo' else
             'car' if options_modes[i] == 'Voiture' else
-            'vae' if options_modes[i] == 'VAE' else
 
             options_modes[i] for i in checkboxes_modes
         ]
         print("Modes sélectionnés :", selected_mode_values)
+
+        # Gestion des modes séléctionnés pour éviter tout effet de bord avec les paramètres de vitesse
+        # Après avoir construit selected_mode_values depuis CHECKBOXES_MODES :
+        use_bike = 'bicycle' in selected_mode_values
+        use_ped  = 'pedestrian' in selected_mode_values
+        use_car  = 'car' in selected_mode_values
+
+        if not use_bike:
+            bike_speed_kmh = None
+        if not use_ped:
+            ped_speed_ms = None
+        if not use_car:
+            car_speed_cap_ms = None
 
         # Compute the number of steps to display within the progress bar and
         # get features from source
@@ -329,16 +445,29 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                 
                 try :
                     # Appel à la fonction iso
-
                     results = iso(
                         s_olat, s_olng, mode, selected_range_value, type_heure,
-                        type_lieu, formatted_datetime, value, Herekey
+                        type_lieu, formatted_datetime, value, Herekey,
+                        
+                        speed_ped_ms=ped_speed_ms,
+                        speed_car_cap_ms=car_speed_cap_ms,
+                        speed_bike_kmh=bike_speed_kmh,
+                        base_bike_kmh=base_bike_speed_kmh
                     )
                     saveInDbIso(mode)
 
+                    # Déterminer la vitesse utilisée pour le mode actuel (en km/h) et la poser dans une variable commune pour l'attribut de la couche résultat
+                    if mode == "pedestrian":
+                        vitesse_kmh = ped_speed_kmh
+                    elif mode == "bicycle":
+                        vitesse_kmh = bike_speed_kmh
+                    elif mode == "car":
+                        vitesse_kmh = car_speed_cap_kmh or None
+
+                    # Écriture des résultats dans la couche de sortie
                     for polygon_iso, valeur in results:
                         enriched_attributes = combined_attributes + [
-                            mode, formatted_datetime, selected_range_value, valeur, buffer_size
+                            mode, formatted_datetime, selected_range_value, valeur, buffer_size, vitesse_kmh
                         ]
 
                         # Vérifier si un buffer doit être appliqué
@@ -423,6 +552,9 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                 <li><b>Date et heure :</b> Paramètre permettant de spécifier la date et l'heure pour le calcul des isochrones.</li>
                 <li><b>Type d'heure :</b> Spécifie si l'heure fournie correspond à une heure de départ ou d'arrivée.</li>
                 <li><b>Modes de transport :</b> Sélectionnez les modes de transport à inclure dans les calculs.</li>
+                <li><b>Vitesse piéton :</b> Si le mode piéton est sélectionné, spécifiez la vitesse de déplacement en km/h.</li>
+                <li><b>Limiteur de vitesse voiture :</b> Si le mode voiture est sélectionné, spécifiez la limition de vitesse max à ne pas dépasser en km/h (optionnel).</li>
+                <li><b>Vitesse vélo :</b> Si le mode vélo est sélectionné, choisissez un preset de vitesse ou entrez une vitesse personnalisée en km/h.</li>
                 <li><b>Mode distance ou temps :</b> Sélectionner si vous voulez calculer des isochrones (facteur temps) ou des isodistances (facteur distance).</li>
                 <li><b>Valeur(s) à requêter :</b> Sélectionne la ou les valeurs nécessaires à la construction du ou des différentes zones de chalandises. Chaque valeur doit être séparée par des virgules avec ou sans espaces.</li>
             </ul>
