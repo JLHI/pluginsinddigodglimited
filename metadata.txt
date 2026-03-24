@@ -6,7 +6,7 @@
 name=PluginsInddigoDGLimited
 qgisMinimumVersion=3.0
 description=Les plugins restreints du pôle DG d'Inddigo
-version=1.12
+version=1.13
 author=JLHI
 email=jl.humbert@inddigo.com
 
