@@ -222,13 +222,45 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             )
         )
 
+        # Switch entres saisie manuelle ou champ dans l'UI
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                "USE_FIELD_OR_STRING",
+                self.tr("Méthode de saisie des valeurs"),
+                options=["Saisir manuellement", "Utiliser un champ"],
+                allowMultiple=False,
+                defaultValue=0
+            )
+        )
+
         # Paramètre valeur max
         self.addParameter(
             QgsProcessingParameterString(
                 self.VALEURS,
-                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones séparées par des virgules (<b>En mètre<b> ou <b>en minute<b>)")
+                self.tr("Entrez la(les) valeur(s) nécessaire(s) à la construction des isochrones séparées par des virgules (<b>En mètre</b> ou <b>en minute</b>)"),
+                optional=True
             )
         )
+
+        # Permettre à l'utilisateur de choisir un champ contenant les valeurs de temps ou de distance
+        self.addParameter(
+            QgsProcessingParameterField(
+                "FIELD_VALEURS",
+                self.tr("Champ contenant les valeurs de temps ou de distance pour le calcul"),
+                parentLayerParameterName=self.INPUT1,
+                optional=True
+            )
+        )
+
+        # Afficher VALEURS seulement si "Saisir manuellement"
+        self.parameterDefinition(self.VALEURS).setMetadata({
+            'widget_wrapper': {'visible_when': {'USE_FIELD_OR_STRING': [0]}}
+        })
+
+        # Afficher FIELD_VALEURS seulement si "Utiliser un champ"
+        self.parameterDefinition("FIELD_VALEURS").setMetadata({
+            'widget_wrapper': {'visible_when': {'USE_FIELD_OR_STRING': [1]}}
+        })
 
         # Paramètre buffer
         self.addParameter(
@@ -298,6 +330,8 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         checkboxes_modes = self.parameterAsEnums(parameters, self.CHECKBOXES_MODES, context)
         range_checkboxes = self.parameterAsEnums(parameters, self.CHECKBOXES_RANGE, context)[0]
         valeurs = self.parameterAsString(parameters,self.VALEURS, context)
+        field_valeurs = self.parameterAsFields(parameters, "FIELD_VALEURS", context)
+        use_field = self.parameterAsEnum(parameters, "USE_FIELD_OR_STRING", context)
         buffer_size = self.parameterAsDouble(parameters, self.BUFFER, context)
 
         # --- [GESTION DES PARAMÈTRES DE VITESSE] ---
@@ -352,7 +386,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             QgsField("Mode", QVariant.String),
             QgsField("Date", QVariant.String),
             QgsField("Option", QVariant.String),
-            QgsField("Valeur", QVariant.Int),
+            QgsField("Valeur_api", QVariant.Int),
             QgsField("Buffer_m", QVariant.Int),
             QgsField("Vitesse_kmh", QVariant.Double)
         ]
@@ -420,17 +454,6 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         else:
             type_heure = 'arrivalTime='
             type_lieu = f'destination='
-        
-      
-
-        # Appel de la fonction pour formatter les valeurs intermédiaires (supprimant les espaces inutiles et séparer les valeurs par des virgules)
-        try :
-            if selected_range_value == 'time' :
-                print(type(valeurs)) 
-                valeurs = multiply_by_60(valeurs)
-            value = clean_intermediate_values(valeurs)
-        except TypeError as e :
-            print(f"Erreur : {e}")
 
         # Parcours des feature
         for current, feature1 in enumerate(features1):
@@ -438,6 +461,37 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             if feedback.isCanceled():
                 break
 
+            # Utiliser un champ SEULEMENT si :
+            # - l'utilisateur a choisi "Utiliser un champ"
+            # - un champ est réellement sélectionné
+            if use_field == 1:
+                if field_valeurs in [None, "", " "]: 
+                    raise QgsProcessingException(
+                        "Vous avez choisi d'utiliser un champ pour les valeurs, mais aucun champ n'est sélectionné."
+                    )
+                valeurs_par_entite = feature1[field_valeurs]
+            else:
+                valeurs_par_entite = valeurs  # saisie manuelle
+
+            # Vérifier si aucune valeur
+            if valeurs_par_entite is None or str(valeurs_par_entite).strip() == "":
+                feedback.pushInfo(f"Feature {feature1.id()} ignorée : aucune valeur d'isochrone définie.")
+                continue
+
+            # Conversion temps : minutes → secondes
+            if selected_range_value == 'time':
+                try:
+                    valeurs_par_entite = multiply_by_60(valeurs_par_entite)
+                except Exception as e:
+                    feedback.pushInfo(f"Erreur conversion temps (feature {feature1.id()}) : {e}")
+                    continue
+
+            # Nettoyage des valeurs (supprime espaces, valide format, etc.)
+            try:
+                value = clean_intermediate_values(valeurs_par_entite)
+            except Exception as e:
+                feedback.pushInfo(f"Erreur dans les valeurs de l'entité {feature1.id()} : {e}")
+                continue
 
             # Récupère la géométrie
             geometry1 = feature1.geometry()
@@ -568,14 +622,17 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             <h4>Paramètres</h4>
             <ul>
                 <li><b>Couche d'entrée :</b> La couche contenant les points d'origine.</li>
-                <li><b>Date et heure :</b> Paramètre permettant de spécifier la date et l'heure pour le calcul des isochrones.</li>
-                <li><b>Type d'heure :</b> Spécifie si l'heure fournie correspond à une heure de départ ou d'arrivée.</li>
+                <li><b>Date et heure :</b> Paramètre permettant de spécifier la date et l'heure pour le calcul des isochrones (modes Voiture et Camion).</li>
+                <li><b>Type d'heure :</b> Spécifie si l'heure fournie correspond à une heure de départ ou d'arrivée. (modes Voiture et Camion)</li>
                 <li><b>Modes de transport :</b> Sélectionnez les modes de transport à inclure dans les calculs.</li>
                 <li><b>Vitesse piéton :</b> Si le mode piéton est sélectionné, spécifiez la vitesse de déplacement en km/h.</li>
                 <li><b>Limiteur de vitesse voiture :</b> Si le mode voiture est sélectionné, spécifiez la limition de vitesse max à ne pas dépasser en km/h (optionnel).</li>
                 <li><b>Vitesse vélo :</b> Si le mode vélo est sélectionné, choisissez un preset de vitesse ou entrez une vitesse personnalisée en km/h.</li>
                 <li><b>Mode distance ou temps :</b> Sélectionner si vous voulez calculer des isochrones (facteur temps) ou des isodistances (facteur distance).</li>
+                <li><b>Méthode de saisie des valeurs :</b> Sélectionner si vous utiliser une ou des valeurs fixes ou un champ qui contient les valeurs.</li>
                 <li><b>Valeur(s) à requêter :</b> Sélectionne la ou les valeurs nécessaires à la construction du ou des différentes zones de chalandises. Chaque valeur doit être séparée par des virgules avec ou sans espaces.</li>
+                <li><b>Champ contenant les valeurs de temps ou de distance :</b> Sélectionner le champ contenant les valeurs de temps ou de distance à utiliser pour générer les calculs (séparer les valeurs par des virgules. Les entités ayant des valeurs nulles ou vides sont ignorées).</li>
+                <li><b>Buffer :</b> Permet d'ajouter un buffer de taille personnalisée (en mètres) autour des isochrones générés afin de lisser le résultat.</li>
             </ul>
             <p>Le résultat est une couche géographique ayant pour géométrie les isochrones/isodistances ainsi calculés pour chaque mode de transport et récapitulant les options choisies pour construire cette nouvelle couche.</p>
             <h4>Sorties</h4>
