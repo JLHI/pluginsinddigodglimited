@@ -9,7 +9,7 @@ from ...flexpolyline import decode
 
 
 def iso(lat_origin, lon_origin, mode, selected_range_value, type_heure, type_lieu, formatted_datetime, value, Herekey,
-                speed_ped_ms=None, speed_car_cap_ms=None, speed_bike_kmh=None, base_bike_kmh=15.0):
+                speed_ped_ms=None, speed_car_cap_ms=None, speed_bike_kmh=None, speed_truck_cap_ms=None, base_bike_kmh=15.0):
     try:
         time.sleep(0.5)
         # Construction de l'URL
@@ -45,7 +45,11 @@ def iso(lat_origin, lon_origin, mode, selected_range_value, type_heure, type_lie
         # Paramètre natif VOITURE : vehicle[speedCap] (m/s) [optionnel]
         if modes == 'car' and speed_car_cap_ms and speed_car_cap_ms > 0:
             url += (f"&vehicle[speedCap]={speed_car_cap_ms}")
-        
+
+        # Paramètre natif CAMION : vehicle[speedCap] (m/s) [optionnel]
+        if modes == 'truck' and speed_truck_cap_ms and speed_truck_cap_ms > 0:
+            url += (f"&vehicle[speedCap]={speed_truck_cap_ms}")
+
         print("requête :", url)
 
         # Envoyer une requête GET

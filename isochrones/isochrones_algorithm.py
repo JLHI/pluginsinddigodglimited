@@ -144,7 +144,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.CHECKBOXES_MODES,
                 self.tr("Selectionnez les modes que vous voulez requêter"),
-                options=["Piéton", "Vélo","Voiture"],
+                options=["Piéton", "Vélo","Voiture", "Camion"],
                 allowMultiple=True,  # Permet de cocher plusieurs options
                 defaultValue=[0]  
             )
@@ -166,6 +166,17 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber(
                 "CAR_SPEED_CAP_KMH",
                 self.tr("Limiteur de vitesse voiture (min 3.6 km/h - max 252 km/h)"),
+                type=QgsProcessingParameterNumber.Double,
+                defaultValue=None,
+                optional=True
+            )
+        )
+
+    # Camion (Limiteur de vitesse en km/h) -> si renseigné, envoyé en m/s via vehicle[speedCap]
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                "TRUCK_SPEED_CAP_KMH",
+                self.tr("Limiteur de vitesse camion (min 3.6 km/h - max 252 km/h)"),
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=None,
                 optional=True
@@ -292,6 +303,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         # --- [GESTION DES PARAMÈTRES DE VITESSE] ---
         ped_speed_kmh = self.parameterAsDouble(parameters, "PEDESTRIAN_SPEED_KMH", context)
         car_speed_cap_kmh = self.parameterAsDouble(parameters, "CAR_SPEED_CAP_KMH", context)
+        truck_speed_cap_kmh = self.parameterAsDouble(parameters, "TRUCK_SPEED_CAP_KMH", context)
 
         bike_preset_idx = self.parameterAsEnum(parameters, "BIKE_PRESET", context)
         bike_speed_custom = self.parameterAsDouble(parameters, "BIKE_SPEED_CUSTOM_KMH", context)
@@ -307,6 +319,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         # Conversion utiles pour l'API de km/h en m/s
         ped_speed_ms = ped_speed_kmh * 1000.0 / 3600.0 if ped_speed_kmh and ped_speed_kmh > 0 else None
         car_speed_cap_ms = car_speed_cap_kmh * 1000.0 / 3600.0 if car_speed_cap_kmh and car_speed_cap_kmh > 0 else None
+        truck_speed_cap_ms = truck_speed_cap_kmh * 1000.0 / 3600.0 if truck_speed_cap_kmh and truck_speed_cap_kmh > 0 else None
 
         # Vitesse base vélo (sert au coefficient de correction temps pour bicycle)
         base_bike_speed_kmh = 15.0
@@ -363,13 +376,13 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         print("Range sélectionné :", selected_range_value)
 
         # Transformation des indices de CHECKBOXES_MODES en noms d'options
-        options_modes = ["Piéton", "Vélo","Voiture"]
+        options_modes = ["Piéton", "Vélo","Voiture","Camion"]
         selected_mode_values = [
             'pedestrian' if options_modes[i] == 'Piéton' else
             'bicycle' if options_modes[i] == 'Vélo' else
             'car' if options_modes[i] == 'Voiture' else
-
-            options_modes[i] for i in checkboxes_modes
+            'truck' if options_modes[i] == 'Camion' else None
+            for i in checkboxes_modes
         ]
         print("Modes sélectionnés :", selected_mode_values)
 
@@ -378,6 +391,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         use_bike = 'bicycle' in selected_mode_values
         use_ped  = 'pedestrian' in selected_mode_values
         use_car  = 'car' in selected_mode_values
+        use_truck = 'truck' in selected_mode_values
 
         if not use_bike:
             bike_speed_kmh = None
@@ -385,6 +399,8 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             ped_speed_ms = None
         if not use_car:
             car_speed_cap_ms = None
+        if not use_truck :
+            truck_speed_cap_ms = None
 
         # Compute the number of steps to display within the progress bar and
         # get features from source
@@ -451,6 +467,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                         
                         speed_ped_ms=ped_speed_ms,
                         speed_car_cap_ms=car_speed_cap_ms,
+                        speed_truck_cap_ms=truck_speed_cap_ms,
                         speed_bike_kmh=bike_speed_kmh,
                         base_bike_kmh=base_bike_speed_kmh
                     )
@@ -463,6 +480,8 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                         vitesse_kmh = bike_speed_kmh
                     elif mode == "car":
                         vitesse_kmh = car_speed_cap_kmh or None
+                    elif mode == "truck":
+                        vitesse_kmh = truck_speed_cap_kmh or None
 
                     # Écriture des résultats dans la couche de sortie
                     for polygon_iso, valeur in results:
