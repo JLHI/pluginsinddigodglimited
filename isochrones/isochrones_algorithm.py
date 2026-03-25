@@ -583,7 +583,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Isochrone_here'
+        return 'isochrone_here'
 
     def displayName(self):
         """
