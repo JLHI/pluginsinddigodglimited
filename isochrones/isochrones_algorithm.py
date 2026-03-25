@@ -590,7 +590,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return 'Isochrone_here'
+        return 'Isochrone HERE'
 
     def group(self):
         return "Les plugins restreints du pôle DG d\'Inddigo" 
