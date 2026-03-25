@@ -583,14 +583,14 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
         lowercase alphanumeric characters only and no spaces or other
         formatting characters.
         """
-        return 'Isochrone HERE'
+        return 'Isochrone_here'
 
     def displayName(self):
         """
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return 'Isochrone HERE'
+        return 'Isochrone_here'
 
     def group(self):
         return "Les plugins restreints du pôle DG d\'Inddigo" 
