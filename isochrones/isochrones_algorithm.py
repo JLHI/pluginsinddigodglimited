@@ -395,9 +395,9 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             fields.append(new_field)
 
         # Création du sink avec les champs combinés
-        sink, errorMsg = self.parameterAsSink(parameters,self.OUTPUT, context, fields, QgsWkbTypes.Polygon, crs_wgs84)
+        sink, dest_id = self.parameterAsSink(parameters,self.OUTPUT, context, fields, QgsWkbTypes.Polygon, crs_wgs84)
         if not sink:
-            raise QgsProcessingException(f"Erreur lors de la création de la couche de sortie : {errorMsg}.")
+            raise QgsProcessingException(f"Erreur lors de la création de la couche de sortie.")
         
         selected_index = self.parameterAsEnum(parameters, self.CKB_DEPART_OU_ARRIVEE, context)
         # Transformation des indices de CHECKBOXES_MODES en noms d'options
@@ -573,7 +573,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             feedback.setProgress(int(current * total))
 
         feedback.pushInfo("Traitement terminé avec succès.")
-        return {self.OUTPUT: sink}
+        return {self.OUTPUT: dest_id}
 
     def name(self):
         """
