@@ -469,7 +469,7 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
                     raise QgsProcessingException(
                         "Vous avez choisi d'utiliser un champ pour les valeurs, mais aucun champ n'est sélectionné."
                     )
-                valeurs_par_entite = feature1[field_valeurs]
+                valeurs_par_entite = feature1[field_valeurs[0]]
             else:
                 valeurs_par_entite = valeurs  # saisie manuelle
 
