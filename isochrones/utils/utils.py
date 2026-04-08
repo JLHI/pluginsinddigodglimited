@@ -52,7 +52,7 @@ def getProjectName():
     # Récupère le chemin et le nom du projet
     title = QgsProject.instance().baseName()
     print(title)
-    if title is (''):
+    if title == "":
         # Pour enregistrer le projet sans titre ds une variable
         title = 'Un projet sans nom'
         return title
@@ -61,12 +61,15 @@ def getProjectName():
     
 
 def clean_intermediate_values(texte):
-    if texte is (''):
-        return texte
-    else :
-        # Remplace les virgules entourées d'espaces ou non, par des virgules simples
-        txt_nettoye = re.sub(r'\s*,\s*', ',', texte)
-    return txt_nettoye
+    if texte is None:
+        return None
+    texte = str(texte)  # Convertit en chaîne de texte si ce n'est pas déjà le cas
+    
+    if texte.strip() == "":
+        return ""  # Retourne une chaîne vide si le texte est vide ou ne contient que des espaces
+    
+    # Remplace les virgules entourées d'espaces ou non, par des virgules simples
+    return re.sub(r'\s*,\s*', ',', texte)
 
 def multiply_by_60(values):
         """
@@ -74,12 +77,20 @@ def multiply_by_60(values):
         - Supporte une seule valeur ou plusieurs.
         - Ignore les valeurs non numériques et affiche un message d'erreur.
         """
+        if values is None:
+            return None
+        
+        values = str(values)  # Convertit en chaîne de texte si ce n'est pas déjà le cas
+
         results = []
         items = values.replace(" ", "").split(",")
 
         for v in items:
+            if v == "":
+                continue  # Ignore les éléments vides
             try:
-                results.append(f"{int(v) * 60}")
-            except Exception as e:
-                print(e)
+                results.append(str(int(float(v)) * 60))
+            except ValueError:
+                raise ValueError(f"Valeur non numérique : {v}")
+
         return ", ".join(results)  # Retourne les résultats sous forme de texte

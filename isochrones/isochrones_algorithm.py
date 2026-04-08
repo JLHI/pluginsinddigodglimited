@@ -465,12 +465,20 @@ class isochroneAlgorithm(QgsProcessingAlgorithm):
             # - l'utilisateur a choisi "Utiliser un champ"
             # - un champ est réellement sélectionné
             if use_field == 1:
-                if not field_valeurs : 
+                if not field_valeurs :
                     raise QgsProcessingException(
                         "Vous avez choisi d'utiliser un champ pour les valeurs, mais aucun champ n'est sélectionné."
                     )
-                champ = field_valeurs[0]
-                valeurs_par_entite = feature1[champ]
+                champ = field_valeurs[0]  # On prend le premier champ sélectionné (si plusieurs, les autres sont ignorés)
+                raw_value = feature1[champ]
+
+                if raw_value is None:
+                    valeurs_par_entite = None
+                elif isinstance(raw_value, (int, float)):
+                    valeurs_par_entite = str(raw_value)
+                else:
+                    valeurs_par_entite = raw_value.strip()
+
             else:
                 valeurs_par_entite = valeurs  # saisie manuelle
 
